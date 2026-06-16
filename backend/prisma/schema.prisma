@@ -1,0 +1,55 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model PlatformConfig {
+  id                 Int      @id @default(1)
+  
+  // Naver & Tistory (Kakao) RPA 인증용
+  kakaoId            String?
+  kakaoPw            String?
+  tistoryBlog        String?
+  naverId            String?
+  naverPw            String?  
+  
+  // Blogspot 발행을 위해 구글 OAuth 세션 필수 유지
+  googleClientId     String?
+  googleClientSecret String?
+  googleRefreshToken String?
+  blogspotId         String?
+  
+  // 이미지 파이프라인 (Supabase Storage)
+  supabaseUrl        String?  
+  supabaseKey        String?  
+  
+  updatedAt          DateTime @updatedAt
+}
+
+model Post {
+  id          Int          @id @default(autoincrement())
+  title       String
+  content     String       
+  mediaPaths  String?      
+  scheduledAt DateTime?    
+  status      String       @default("DRAFT") 
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  platformStatuses PlatformStatus[]
+}
+
+model PlatformStatus {
+  id          Int      @id @default(autoincrement())
+  postId      Int
+  platform    String   
+  status      String   @default("PENDING") 
+  errorMsg    String?
+  externalUrl String?  
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, platform])
+}

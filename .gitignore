@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+dev.db
+dev.db-journal
+uploads/
+.chrome-profile/
+.chrome-profile-tistory/
+tistory_session.json
