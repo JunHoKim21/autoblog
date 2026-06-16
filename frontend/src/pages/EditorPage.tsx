@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -19,7 +19,7 @@ const EditorPage = () => {
             new Plugin({
               key: new PluginKey('eventHandler'),
               props: {
-                handleDrop: (view, event, slice, moved) => {
+                handleDrop: (view, event, _slice, moved) => {
                   if (!moved && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
                     const file = event.dataTransfer.files[0];
                     if (!file.type.startsWith('image/')) return false;
