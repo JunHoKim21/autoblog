@@ -3,9 +3,13 @@ import multer from 'multer';
 import path from 'path';
 import * as postController from '../controllers/post.controller';
 import { PrismaClient } from '@prisma/client';
+import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { createClient } from '@libsql/client';
 
 const router = Router();
-const prisma = new PrismaClient();
+const libsql = createClient({ url: process.env.DATABASE_URL || 'file:./dev.db' });
+const adapter = new PrismaLibSql(libsql);
+const prisma = new PrismaClient({ adapter });
 
 // Multer 설정
 const storage = multer.diskStorage({
@@ -58,7 +62,7 @@ router.get('/config', async (req, res) => {
 
 router.put('/config', async (req, res) => {
   try {
-    const data = req.body;
+    const { id, updatedAt, ...data } = req.body;
     const config = await prisma.platformConfig.upsert({
       where: { id: 1 },
       update: data,
@@ -66,6 +70,7 @@ router.put('/config', async (req, res) => {
     });
     res.json({ success: true, config });
   } catch (err: any) {
+    console.error('Config update error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
