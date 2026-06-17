@@ -66,26 +66,30 @@ export class BlogspotPublisher extends BasePublisher {
       await page.goto(`https://www.blogger.com/`, { waitUntil: 'networkidle' });
       await page.waitForTimeout(3000);
 
-      // 실제 숫자형 블로그 ID 추출 (URL에서 가져옴)
+      // 다중 구글 계정(/u/4/ 등) 및 실제 숫자형 블로그 ID 추출
       let realBlogId = blogspotId;
+      let baseUrl = 'https://www.blogger.com/blog';
       const currentUrl = page.url();
-      const match = currentUrl.match(/\/blog\/posts\/(\d+)/);
-      if (match && match[1]) {
-        realBlogId = match[1];
-        console.log(`[BlogspotPublisher] 실제 숫자형 블로그 ID 추출 완료: ${realBlogId}`);
+      
+      const urlMatch = currentUrl.match(/^(https:\/\/www\.blogger\.com(?:\/u\/\d+)?\/blog)\/posts\/(\d+)/);
+      if (urlMatch) {
+        baseUrl = urlMatch[1]; // 예: https://www.blogger.com/u/4/blog
+        realBlogId = urlMatch[2]; // 예: 7203817485309739956
+        console.log(`[BlogspotPublisher] 다중 계정 기반 URL 및 블로그 ID 추출 완료: ${baseUrl}, ID: ${realBlogId}`);
       } else {
-        console.log('[BlogspotPublisher] 경고: 숫자형 블로그 ID를 추출하지 못했습니다. 기존 ID를 사용합니다.');
+        console.log('[BlogspotPublisher] 경고: 다중 계정 URL을 추출하지 못했습니다. 기본 경로를 사용합니다.');
       }
 
       // 새 글 쓰기 버튼 클릭
       console.log('[BlogspotPublisher] 새 글 쓰기 화면으로 이동합니다.');
       try {
-        const newPostBtn = page.locator('div:has-text("새 글"):not(:has(*)), div:has-text("New Post"):not(:has(*)), a:has-text("새 글"), a:has-text("New Post"), a[href*="/new"]').first();
-        await newPostBtn.click({ timeout: 5000 });
+        // '새 글' 텍스트를 포함하는 요소 중 가장 먼저 보이는 것을 클릭 (광범위 매칭)
+        const newPostBtn = page.locator('text="새 글", text="New Post", div[role="button"]:has-text("새 글")').first();
+        await newPostBtn.click({ timeout: 3000 });
         await page.waitForTimeout(3000); // 에디터 로딩 대기
       } catch (e) {
-        console.log('[BlogspotPublisher] 새 글 쓰기 버튼을 찾을 수 없어 URL로 직접 접근합니다.');
-        await page.goto(`https://www.blogger.com/blog/post/edit/${realBlogId}/new`, { waitUntil: 'networkidle' });
+        console.log(`[BlogspotPublisher] 새 글 쓰기 버튼을 찾을 수 없어 URL(${baseUrl}/post/edit/${realBlogId}/new)로 직접 접근합니다.`);
+        await page.goto(`${baseUrl}/post/edit/${realBlogId}/new`, { waitUntil: 'networkidle' });
         await page.waitForTimeout(3000);
       }
 
