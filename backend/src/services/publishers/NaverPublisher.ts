@@ -6,6 +6,7 @@ import path from 'path';
 
 export class NaverPublisher extends BasePublisher {
   async publish(params: PublishParams): Promise<PublishResult> {
+    const { title, content } = params;
     const { naverId, naverPw } = this.config;
     
     // 2026년 탐지 우회의 핵심: 실제 로컬 크롬의 프로필 데이터 세션 오버레이
