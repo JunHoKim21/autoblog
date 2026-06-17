@@ -90,14 +90,37 @@ export class TistoryPublisher extends BasePublisher {
       await page.locator('#post-title-inp').fill(title);
       await page.waitForTimeout(500);
 
-      // 본문 입력 (contenteditable)
-      await page.evaluate((htmlContent) => {
-        const editor = document.querySelector('[contenteditable="true"]');
-        if (editor) {
-          editor.innerHTML = htmlContent;
-        }
-      }, content);
-      await page.waitForTimeout(1000);
+      // 본문 입력 (ProseMirror 에디터 대응)
+      try {
+        const editorSelector = '.ProseMirror';
+        await page.waitForSelector(editorSelector, { state: 'visible', timeout: 5000 });
+        await page.click(editorSelector);
+        
+        await page.evaluate((htmlContent) => {
+          const editorDiv = document.querySelector('.ProseMirror') as HTMLElement;
+          if (editorDiv) {
+            const dataTransfer = new DataTransfer();
+            dataTransfer.setData('text/html', htmlContent);
+            dataTransfer.setData('text/plain', htmlContent);
+            
+            const pasteEvent = new ClipboardEvent('paste', {
+              clipboardData: dataTransfer,
+              bubbles: true,
+              cancelable: true
+            });
+            editorDiv.dispatchEvent(pasteEvent);
+          }
+        }, content);
+        await page.waitForTimeout(1000);
+      } catch (e) {
+        console.log('[TistoryPublisher] ProseMirror를 찾을 수 없어 iframe 폴백을 시도합니다.');
+        await page.evaluate((htmlContent) => {
+          const iframe = document.querySelector('#tx_canvas_source') as HTMLIFrameElement;
+          if (iframe && iframe.contentDocument) {
+            iframe.contentDocument.body.innerHTML = htmlContent;
+          }
+        }, content);
+      }
 
       // 하단 완료 버튼 클릭
       const publishLayerBtn = await page.$('#publish-layer-btn');
