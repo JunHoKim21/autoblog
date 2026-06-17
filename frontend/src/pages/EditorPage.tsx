@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
+import Placeholder from '@tiptap/extension-placeholder';
 import { Plugin, PluginKey } from 'prosemirror-state';
 
 const EditorPage = () => {
@@ -57,9 +58,12 @@ const EditorPage = () => {
             })
           ];
         }
-      })
+      }),
+      Placeholder.configure({
+        placeholder: '내용을 작성하세요. 사진을 드래그 앤 드롭하면 서버에 안전하게 업로드됩니다.',
+      }),
     ],
-    content: '<p>내용을 작성하세요. 사진을 드래그 앤 드롭하면 서버에 안전하게 업로드됩니다.</p>',
+    content: '',
     editorProps: {
       attributes: {
         class: 'prose max-w-none focus:outline-none min-h-[400px]',
