@@ -22,23 +22,29 @@ app.use('/api', apiRouter);
 // 서버 상태 체크
 app.get('/health', (req, res) => res.send('Autoblog Server is running.'));
 
+import { prisma } from './db';
+
+let isPublishing = false;
+
 app.listen(PORT, () => {
   console.log(`🚀 Autoblog Backend Server is running on port ${PORT}`);
   
   // 1분 단위 예약 게시물 폴링
   cron.schedule('* * * * *', async () => {
+    if (isPublishing) {
+      console.log(`[Scheduler] Skip: Previous publish job is still running.`);
+      return;
+    }
+    
     console.log(`[Scheduler] Checking scheduled posts at ${new Date().toISOString()}`);
+    isPublishing = true;
     
-    // index.ts에서 prismaClient를 가져올 수 없으므로, 여기서 임시 생성하거나 postController의 prisma를 쓸 수 있습니다.
-    // 하지만 각 모듈에서 PrismaClient를 중복 호출하면 문제 생길 수 있음.
-    // 안전하게 새 인스턴스 만들어서 전달.
-    const { PrismaClient } = require('@prisma/client');
-    const { PrismaLibSql } = require('@prisma/adapter-libsql');
-    const { createClient } = require('@libsql/client');
-    const libsql = createClient({ url: process.env.DATABASE_URL || 'file:./dev.db' });
-    const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL || 'file:./dev.db' });
-    const prisma = new PrismaClient({ adapter });
-    
-    await processScheduledPosts(prisma).finally(() => prisma.$disconnect());
+    try {
+      await processScheduledPosts(prisma);
+    } catch (error) {
+      console.error(`[Scheduler] Error in processScheduledPosts:`, error);
+    } finally {
+      isPublishing = false;
+    }
   });
 });
