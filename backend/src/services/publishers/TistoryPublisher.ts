@@ -25,6 +25,8 @@ export class TistoryPublisher extends BasePublisher {
     });
 
     const page = await context.newPage();
+    // QA Edge Case: 티스토리/카카오 무한 대기 방지 (30초 타임아웃)
+    page.setDefaultTimeout(30000);
     const cursor = createCursor(page);
 
     try {

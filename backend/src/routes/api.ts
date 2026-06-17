@@ -22,13 +22,19 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // 이미지 업로드 API
-router.post('/upload', upload.single('image'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No image file provided.' });
-  }
-  const imageUrl = `/uploads/${req.file.filename}`;
-  const localPath = path.join(__dirname, '../../uploads', req.file.filename);
-  res.json({ imageUrl, localPath });
+router.post('/upload', (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) {
+      console.error('[QA Fallback] Image upload failed:', err);
+      return res.status(500).json({ error: 'Image upload timeout or server error', fallback: true });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided.' });
+    }
+    const imageUrl = `/uploads/${req.file.filename}`;
+    const localPath = path.join(__dirname, '../../uploads', req.file.filename);
+    res.json({ imageUrl, localPath });
+  });
 });
 
 // 게시글 API
