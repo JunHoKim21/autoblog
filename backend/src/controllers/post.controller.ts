@@ -14,6 +14,14 @@ export const createPost = async (req: Request, res: Response) => {
     const status = scheduledAt ? 'SCHEDULED' : 'PUBLISHING';
     const parsedScheduledAt = scheduledAt ? new Date(scheduledAt) : null;
 
+    const config = await prisma.platformConfig.findUnique({ where: { id: 1 } });
+    const validPlatforms = [];
+    if (config?.naverId && config?.naverPw) validPlatforms.push('NAVER');
+    if (config?.kakaoId && config?.kakaoPw && config?.tistoryBlog) validPlatforms.push('TISTORY');
+    if (config?.blogspotId) validPlatforms.push('BLOGSPOT'); // Or check googleRefreshToken if you prefer, but blogspotId is a good proxy.
+
+    const finalPlatforms = (platforms || []).filter((p: string) => validPlatforms.includes(p.toUpperCase()));
+
     const newPost = await prisma.post.create({
       data: {
         title,
@@ -22,8 +30,8 @@ export const createPost = async (req: Request, res: Response) => {
         scheduledAt: parsedScheduledAt,
         status,
         platformStatuses: {
-          create: (platforms || []).map((platform: string) => ({
-            platform,
+          create: finalPlatforms.map((platform: string) => ({
+            platform: platform.toUpperCase(),
             status: 'PENDING'
           }))
         }
