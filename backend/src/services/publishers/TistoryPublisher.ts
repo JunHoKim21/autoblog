@@ -1,6 +1,5 @@
 import { BasePublisher, PublishParams, PublishResult } from './Publisher.interface';
 import { chromium } from 'rebrowser-playwright';
-import { createCursor } from 'ghost-cursor';
 import clipboardy from 'clipboardy';
 import path from 'path';
 
@@ -27,7 +26,6 @@ export class TistoryPublisher extends BasePublisher {
     const page = await context.newPage();
     // QA Edge Case: 티스토리/카카오 무한 대기 방지 (30초 타임아웃)
     page.setDefaultTimeout(30000);
-    const cursor = createCursor(page);
 
     try {
       // 티스토리 관리자 페이지 이동 (로그인 체크)
@@ -43,15 +41,14 @@ export class TistoryPublisher extends BasePublisher {
       if (page.url().includes('accounts.kakao.com/login')) {
         console.log('[TistoryPublisher] 카카오 로그인을 진행합니다...');
         
-        const idInput = await page.$('input[name="loginId"]');
-        if (idInput) await cursor.click('input[name="loginId"]');
+        await page.waitForSelector('input[name="loginId"]', { state: 'visible' });
+        await page.click('input[name="loginId"]');
         
         clipboardy.writeSync(kakaoId);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
         await page.waitForTimeout(Math.random() * 500 + 300);
         
-        const pwInput = await page.$('input[name="password"]');
-        if (pwInput) await cursor.click('input[name="password"]');
+        await page.click('input[name="password"]');
         
         clipboardy.writeSync(kakaoPw);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
@@ -59,12 +56,11 @@ export class TistoryPublisher extends BasePublisher {
         
         clipboardy.writeSync('');
 
-        const loginBtn = await page.$('button[type="submit"]');
-        if (loginBtn) await cursor.click('button[type="submit"]');
+        await page.click('button[type="submit"]');
         
         await page.waitForNavigation({ waitUntil: 'networkidle' });
-        await page.goto(`https://${tistoryBlog}.tistory.com/manage/post`);
-        await page.waitForTimeout(Math.random() * 1000 + 1000);
+        await page.goto(`https://${tistoryBlog}.tistory.com/manage/post`, { waitUntil: 'networkidle' });
+        await page.waitForTimeout(2000);
       }
 
       // --- 에디터 자동화 로직 ---
@@ -99,7 +95,7 @@ export class TistoryPublisher extends BasePublisher {
       // 하단 완료 버튼 클릭
       const publishLayerBtn = await page.$('#publish-layer-btn');
       if (publishLayerBtn) {
-        await cursor.click('#publish-layer-btn');
+        await page.click('#publish-layer-btn');
         await page.waitForTimeout(1500);
         
         // 공개 발행 선택 (기본값이 공개일 수 있지만 명시적 클릭)
@@ -114,7 +110,7 @@ export class TistoryPublisher extends BasePublisher {
         // 최종 발행 버튼 클릭
         const publishBtn = await page.$('#publish-btn');
         if (publishBtn) {
-          await cursor.click('#publish-btn');
+          await page.click('#publish-btn');
           await page.waitForNavigation({ waitUntil: 'networkidle' });
           console.log('[TistoryPublisher] 발행 완료!');
         }

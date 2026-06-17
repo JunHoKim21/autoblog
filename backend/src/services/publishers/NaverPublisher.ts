@@ -1,6 +1,5 @@
 import { BasePublisher, PublishParams, PublishResult } from './Publisher.interface';
 import { chromium } from 'rebrowser-playwright'; 
-import { createCursor } from 'ghost-cursor';
 import clipboardy from 'clipboardy';
 import path from 'path';
 
@@ -24,28 +23,23 @@ export class NaverPublisher extends BasePublisher {
     const page = await context.newPage();
     // QA Edge Case: 네이버 무한 대기 방지 (30초 타임아웃)
     page.setDefaultTimeout(30000);
-    const cursor = createCursor(page);
 
     try {
       await page.goto('https://nid.naver.com/nidlogin.login');
       await page.waitForTimeout(Math.random() * 1000 + 500);
 
-      // ghost-cursor를 통한 인간의 미세 진동 마우스 궤적 에뮬레이션
-      const idInput = await page.$('#id');
-      if (idInput) await cursor.click('#id');
+      await page.click('#id');
       
       clipboardy.writeSync(naverId || '');
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
       await page.waitForTimeout(Math.random() * 500 + 300);
 
-      const pwInput = await page.$('#pw');
-      if (pwInput) await cursor.click('#pw');
+      await page.click('#pw');
       
       clipboardy.writeSync(naverPw || '');
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
       
-      const loginBtn = await page.$('[type="submit"]');
-      if (loginBtn) await cursor.click('[type="submit"]');
+      await page.click('[type="submit"]');
       
       await page.waitForNavigation({ waitUntil: 'networkidle' });
       clipboardy.writeSync('');
