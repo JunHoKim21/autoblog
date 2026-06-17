@@ -77,7 +77,14 @@ export const updatePost = async (req: Request, res: Response) => {
         title,
         content,
         mediaPaths: JSON.stringify(mediaPaths || []),
-        scheduledAt: parsedScheduledAt
+        scheduledAt: parsedScheduledAt,
+        status: parsedScheduledAt ? 'SCHEDULED' : 'PUBLISHING',
+        platformStatuses: {
+          updateMany: {
+            where: { status: 'FAILED' },
+            data: { status: 'PENDING', errorMsg: null }
+          }
+        }
       }
     });
 
