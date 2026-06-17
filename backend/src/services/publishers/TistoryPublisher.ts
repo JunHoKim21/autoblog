@@ -61,10 +61,46 @@ export class TistoryPublisher extends BasePublisher {
         await page.waitForTimeout(Math.random() * 1000 + 1000);
       }
 
-      // --- 에디터 자동화 로직 스캐폴딩 ---
-      // (기존 TistoryPublisher.ts와 동일한 구조)
+      // --- 에디터 자동화 로직 ---
+      console.log('[TistoryPublisher] 제목과 본문을 입력합니다.');
       
-      console.log('[TistoryPublisher] 글 작성이 완료되었습니다. (임시저장/발행 버튼 클릭 대기)');
+      // 제목 입력
+      await page.waitForSelector('#post-title-inp', { state: 'visible' });
+      await page.locator('#post-title-inp').fill(title);
+      await page.waitForTimeout(500);
+
+      // 본문 입력 (contenteditable)
+      await page.evaluate((htmlContent) => {
+        const editor = document.querySelector('[contenteditable="true"]');
+        if (editor) {
+          editor.innerHTML = htmlContent;
+        }
+      }, content);
+      await page.waitForTimeout(1000);
+
+      // 하단 완료 버튼 클릭
+      const publishLayerBtn = await page.$('#publish-layer-btn');
+      if (publishLayerBtn) {
+        await cursor.click('#publish-layer-btn');
+        await page.waitForTimeout(1500);
+        
+        // 공개 발행 선택 (기본값이 공개일 수 있지만 명시적 클릭)
+        const publicRadio = await page.$('input[value="PUBLIC"]');
+        if (publicRadio) {
+          await page.evaluate(() => {
+            const radio = document.querySelector('input[value="PUBLIC"]') as HTMLElement;
+            if (radio) radio.click();
+          });
+        }
+        
+        // 최종 발행 버튼 클릭
+        const publishBtn = await page.$('#publish-btn');
+        if (publishBtn) {
+          await cursor.click('#publish-btn');
+          await page.waitForNavigation({ waitUntil: 'networkidle' });
+          console.log('[TistoryPublisher] 발행 완료!');
+        }
+      }
 
       await context.close();
       return { success: true, externalUrl: `https://${tistoryBlog}.tistory.com/` };
