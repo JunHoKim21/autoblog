@@ -59,15 +59,17 @@ const DashboardPage = () => {
       <div className="grid gap-4">
         {posts.map((post) => (
           <div key={post.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                {post.title}
+            <div className="flex-1 min-w-0 space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-lg font-semibold break-keep">
+                  {post.title}
+                </h3>
                 {post.status === 'SCHEDULED' && (
-                  <Link to={`/editor/${post.id}`} className="text-xs font-normal text-blue-600 border border-blue-600 px-2 py-0.5 rounded hover:bg-blue-50 transition-colors">
+                  <Link to={`/editor/${post.id}`} className="shrink-0 text-xs font-normal text-blue-600 border border-blue-600 px-3 py-1 rounded hover:bg-blue-50 transition-colors mt-1">
                     수정
                   </Link>
                 )}
-              </h3>
+              </div>
               <div className="text-sm text-gray-500">
                 작성일: {new Date(post.createdAt).toLocaleString()} <br />
                 {post.scheduledAt && `예약일: ${new Date(post.scheduledAt).toLocaleString()}`}
