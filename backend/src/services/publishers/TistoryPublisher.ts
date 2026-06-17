@@ -34,6 +34,12 @@ export class TistoryPublisher extends BasePublisher {
       await page.goto(`https://${tistoryBlog}.tistory.com/manage/post`, { waitUntil: 'networkidle' });
       await page.waitForTimeout(2000);
 
+      if (page.url().includes('tistory.com/auth/login')) {
+        console.log('[TistoryPublisher] 티스토리 로그인 페이지 감지, 카카오 로그인 버튼을 클릭합니다.');
+        await page.click('text="카카오계정으로 로그인"');
+        await page.waitForNavigation({ waitUntil: 'networkidle' });
+      }
+
       if (page.url().includes('accounts.kakao.com/login')) {
         console.log('[TistoryPublisher] 카카오 로그인을 진행합니다...');
         
@@ -64,6 +70,18 @@ export class TistoryPublisher extends BasePublisher {
       // --- 에디터 자동화 로직 ---
       console.log('[TistoryPublisher] 제목과 본문을 입력합니다.');
       
+      // 임시저장 팝업 무시
+      try {
+        const cancelBtn = page.locator('text="취소"').first();
+        if (await cancelBtn.isVisible({ timeout: 2000 })) {
+          console.log('[TistoryPublisher] 임시저장 팝업을 닫습니다.');
+          await cancelBtn.click();
+          await page.waitForTimeout(500);
+        }
+      } catch (e) {
+        // 무시
+      }
+
       // 제목 입력
       await page.waitForSelector('#post-title-inp', { state: 'visible' });
       await page.locator('#post-title-inp').fill(title);
