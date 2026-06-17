@@ -14,7 +14,7 @@ export const processScheduledPosts = async (prisma: PrismaClient) => {
   });
 
   for (const stuck of stuckPlatforms) {
-    console.log(`[QA Recovery] Recovering stuck post ${stuck.postId} platform ${stuck.platformName}`);
+    console.log(`[QA Recovery] Recovering stuck post ${stuck.postId} platform ${stuck.platform}`);
     await prisma.platformStatus.update({
       where: { id: stuck.id },
       data: { status: 'FAILED', errorMsg: 'Timeout Recovery: 서버 재시작으로 인한 비정상 종료 복구' }
@@ -47,7 +47,7 @@ export const processScheduledPosts = async (prisma: PrismaClient) => {
       continue;
     }
 
-    const publisher = publishers[plat.platformName.toLowerCase()];
+    const publisher = publishers[plat.platform.toLowerCase()];
     if (!publisher) continue;
 
     // PUBLISHING 상태로 변경
@@ -57,7 +57,7 @@ export const processScheduledPosts = async (prisma: PrismaClient) => {
     });
 
     try {
-      console.log(`[Scheduler] Publishing to ${plat.platformName} for post ${plat.postId}...`);
+      console.log(`[Scheduler] Publishing to ${plat.platform} for post ${plat.postId}...`);
       
       const result = await publisher.publish({
         title: plat.post.title,
@@ -77,7 +77,7 @@ export const processScheduledPosts = async (prisma: PrismaClient) => {
         });
       }
     } catch (err: any) {
-      console.error(`[Scheduler] Unexpected error publishing to ${plat.platformName}:`, err);
+      console.error(`[Scheduler] Unexpected error publishing to ${plat.platform}:`, err);
       await prisma.platformStatus.update({
         where: { id: plat.id },
         data: { status: 'FAILED', errorMsg: `Exception: ${err.message}` }
