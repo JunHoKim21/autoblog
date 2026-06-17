@@ -15,7 +15,7 @@ export const createPost = async (req: Request, res: Response) => {
     const parsedScheduledAt = scheduledAt ? new Date(scheduledAt) : null;
 
     const config = await prisma.platformConfig.findUnique({ where: { id: 1 } });
-    const validPlatforms = [];
+    const validPlatforms: string[] = [];
     if (config?.naverId && config?.naverPw) validPlatforms.push('NAVER');
     if (config?.kakaoId && config?.kakaoPw && config?.tistoryBlog) validPlatforms.push('TISTORY');
     if (config?.blogspotId) validPlatforms.push('BLOGSPOT'); // Or check googleRefreshToken if you prefer, but blogspotId is a good proxy.
