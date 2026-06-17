@@ -127,79 +127,13 @@ export class BlogspotPublisher extends BasePublisher {
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
       await page.waitForTimeout(500);
 
-      // 본문 HTML의 로컬 이미지(/uploads/...)를 찾아 Base64로 치환 (Blogger 업로드 우회)
-      let processedContent = content;
-      try {
-        const imgRegex = /<img[^>]+src="(\/uploads\/[^"]+)"[^>]*>/g;
-        let match;
-        while ((match = imgRegex.exec(content)) !== null) {
-          const src = match[1];
-          const filename = path.basename(src);
-          // BlogspotPublisher.ts의 위치는 backend/src/services/publishers 이므로 uploads는 3단계 위
-          const localFilePath = path.join(__dirname, '../../../../uploads', filename);
-          
-          if (fs.existsSync(localFilePath)) {
-            const fileData = fs.readFileSync(localFilePath);
-            const ext = path.extname(filename).toLowerCase();
-            let mimeType = 'image/png';
-            if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
-            if (ext === '.gif') mimeType = 'image/gif';
-            if (ext === '.webp') mimeType = 'image/webp';
-            
-            const base64Data = `data:${mimeType};base64,${fileData.toString('base64')}`;
-            processedContent = processedContent.replace(src, base64Data);
-            console.log(`[BlogspotPublisher] 로컬 이미지 변환 완료: ${filename}`);
-          }
-        }
-      } catch (err) {
-        console.error('[BlogspotPublisher] 이미지 Base64 변환 실패:', err);
-      }
+      // 본문에서 로컬 이미지 태그를 제거 (드롭으로 삽입할 것이므로 중복 방지)
+      let processedContent = content.replace(/<img[^>]+src="(\/uploads\/[^"]+)"[^>]*>/g, '');
 
       // 본문 영역 탐색 및 클릭 후 HTML 주입
       let injected = false;
 
-      // 0. HTML 뷰 모드 시도 (Base64 이미지가 iframe 주입 시 증발하는 문제 방지)
-      try {
-        console.log('[BlogspotPublisher] HTML 뷰 모드로 전환을 시도합니다.');
-        // 왼쪽 상단 연필 모양 아이콘 (작성 뷰) 드롭다운 클릭
-        const composeViewBtn = page.locator('div[aria-label="작성 뷰"], div[aria-label="Compose view"]').first();
-        if (await composeViewBtn.isVisible()) {
-          await composeViewBtn.click();
-          await page.waitForTimeout(500);
-          
-          // HTML 뷰 선택
-          const htmlViewBtn = page.locator('text="HTML 뷰"').or(page.locator('text="HTML view"')).first();
-          if (await htmlViewBtn.isVisible()) {
-            await htmlViewBtn.click();
-            await page.waitForTimeout(1500);
-            
-            // 클립보드에 HTML 소스 복사
-            clipboardy.writeSync(processedContent);
-            
-            // HTML 에디터(보통 커서가 활성화됨) 빈 곳 클릭
-            await page.mouse.click(200, 300);
-            
-            await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
-            await page.keyboard.press('Backspace');
-            await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
-            await page.waitForTimeout(1500);
-            
-            // 다시 작성 뷰로 복귀
-            const htmlViewDropdown = page.locator('div[aria-label="HTML 뷰"], div[aria-label="HTML view"]').first();
-            if (await htmlViewDropdown.isVisible()) {
-              await htmlViewDropdown.click();
-              await page.waitForTimeout(500);
-              await page.locator('text="작성 뷰"').or(page.locator('text="Compose view"')).first().click();
-              await page.waitForTimeout(1500);
-            }
-            
-            injected = true;
-            console.log('[BlogspotPublisher] HTML 뷰 모드에서 본문 주입 및 이미지 변환 완료.');
-          }
-        }
-      } catch (e) {
-        console.log('[BlogspotPublisher] HTML 뷰 전환 실패. iframe/div 주입으로 넘어갑니다.');
-      }
+      // 0. (삭제됨) HTML 뷰 전환 로직은 불안정하므로 사용하지 않음.
 
       // 1. 프레임(iframe) 내부의 body[contenteditable="true"] 탐색 (Blogger 기본 방식)
       const frames = page.frames();
@@ -245,6 +179,58 @@ export class BlogspotPublisher extends BasePublisher {
       }
       await page.waitForTimeout(1000);
 
+      // 이미지 드래그 앤 드롭 업로드 (Base64가 거부되는 문제 해결)
+      if (params.mediaPaths && params.mediaPaths.length > 0) {
+        console.log('[BlogspotPublisher] 로컬 이미지를 드래그 앤 드롭으로 업로드합니다.');
+        
+        let targetLocator = page.locator('div[contenteditable="true"], .ProseMirror').first();
+        const frames = page.frames();
+        for (const frame of frames) {
+          if (await frame.locator('body[contenteditable="true"], body.editable').count() > 0) {
+            targetLocator = frame.locator('body[contenteditable="true"], body.editable').first();
+            break;
+          }
+        }
+
+        for (const media of params.mediaPaths) {
+          const filename = path.basename(media);
+          const localFilePath = path.join(__dirname, '../../../../uploads', filename);
+          if (fs.existsSync(localFilePath)) {
+            const fileData = fs.readFileSync(localFilePath);
+            const ext = path.extname(filename).toLowerCase();
+            let mimeType = 'image/png';
+            if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+            if (ext === '.gif') mimeType = 'image/gif';
+            if (ext === '.webp') mimeType = 'image/webp';
+            
+            const base64Data = fileData.toString('base64');
+
+            try {
+              await targetLocator.evaluate(async (el, fileInfo) => {
+                const res = await fetch(`data:${fileInfo.mimeType};base64,${fileInfo.base64Data}`);
+                const blob = await res.blob();
+                const file = new File([blob], fileInfo.filename, { type: fileInfo.mimeType });
+                
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                
+                const dropEvent = new DragEvent('drop', {
+                  bubbles: true,
+                  cancelable: true,
+                  dataTransfer: dt,
+                });
+                el.dispatchEvent(dropEvent);
+              }, { base64Data, filename, mimeType });
+              
+              console.log(`[BlogspotPublisher] 이미지 드롭 성공: ${filename}`);
+              await page.waitForTimeout(3000); // 다음 이미지 업로드 대기
+            } catch (e) {
+              console.error(`[BlogspotPublisher] 이미지 드롭 실패: ${filename}`, e);
+            }
+          }
+        }
+      }
+
       // 검색 설명 (Search Description) 자동 입력
       if (searchDescription) {
         try {
@@ -253,12 +239,15 @@ export class BlogspotPublisher extends BasePublisher {
           const searchDescBtn = page.locator('text="검색 설명"').or(page.locator('text="Search description"')).first();
           if (await searchDescBtn.isVisible()) {
             await searchDescBtn.click();
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(1000);
             
-            const searchDescTextarea = page.locator('textarea[aria-label="Search description"], textarea[aria-label="검색 설명"]').first();
+            // textarea를 넓은 범위로 찾기
+            const searchDescTextarea = page.locator('textarea[aria-label="Search description"], textarea[aria-label="검색 설명"], textarea').last();
             if (await searchDescTextarea.isVisible()) {
               await searchDescTextarea.fill(searchDescription);
               console.log('[BlogspotPublisher] 검색 설명 입력 완료.');
+            } else {
+              console.log('[BlogspotPublisher] 검색 설명 textarea를 찾을 수 없습니다.');
             }
           } else {
             console.log('[BlogspotPublisher] 검색 설명 설정이 비활성화되어 입력 건너뜀.');
