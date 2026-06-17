@@ -1,2 +1,3 @@
-2026/06/17-12:36:07.261 7650 Creating DB c:\jun\project\autoblog\backend\.chrome-profile-blogspot\Default\Sync Data\LevelDB since it was missing.
-2026/06/17-12:36:07.279 7650 Reusing MANIFEST c:\jun\project\autoblog\backend\.chrome-profile-blogspot\Default\Sync Data\LevelDB/MANIFEST-000001
+2026/06/17-12:36:35.159 4da0 Reusing MANIFEST c:\jun\project\autoblog\backend\.chrome-profile-blogspot\Default\Sync Data\LevelDB/MANIFEST-000001
+2026/06/17-12:36:35.166 4da0 Recovering log #3
+2026/06/17-12:36:35.167 4da0 Reusing old log c:\jun\project\autoblog\backend\.chrome-profile-blogspot\Default\Sync Data\LevelDB/000003.log 

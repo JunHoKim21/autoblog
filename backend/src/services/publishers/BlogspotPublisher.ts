@@ -36,23 +36,24 @@ export class BlogspotPublisher extends BasePublisher {
       if (page.url().includes('accounts.google.com')) {
         console.log('[BlogspotPublisher] 구글 로그인을 진행합니다...');
         
-        const emailSelector = 'input[type="email"], input[name="identifier"], #identifierId';
-        await page.waitForSelector(emailSelector, { state: 'visible' });
-        await page.click(emailSelector);
+        // 이메일 입력 (다양한 Selector 대응)
+        const emailSelector = 'input[type="email"], input[name="identifier"], #identifierId, input[autocomplete="username"]';
+        await page.waitForSelector(emailSelector, { state: 'visible', timeout: 15000 });
+        await page.locator(emailSelector).first().click();
         clipboardy.writeSync(googleEmail);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
         await page.keyboard.press('Enter');
         
-        await page.waitForTimeout(3000); // 다음 페이지 넘어갈 때까지 충분히 대기
+        await page.waitForTimeout(3000);
         
+        // 비밀번호 입력
         const pwSelector = 'input[type="password"], input[name="Passwd"], input[name="password"]';
-        await page.waitForSelector(pwSelector, { state: 'visible' });
-        await page.click(pwSelector);
+        await page.waitForSelector(pwSelector, { state: 'visible', timeout: 15000 });
+        await page.locator(pwSelector).first().click();
         clipboardy.writeSync(googlePw);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
         await page.keyboard.press('Enter');
 
-        // 2단계 인증 방어 로직 (60초 대기)
         console.log('[BlogspotPublisher] 로그인 제출 완료. 2단계 인증이 뜰 경우 60초 안에 브라우저에서 수동으로 인증을 완료해주세요!');
         try {
           await page.waitForURL((url) => url.href.includes('blogger.com'), { timeout: 60000 });
@@ -61,15 +62,27 @@ export class BlogspotPublisher extends BasePublisher {
         }
       }
 
-      // 새 글 쓰기 버튼 클릭 (URL 강제 이동)
-      await page.goto(`https://www.blogger.com/blog/post/edit/${blogspotId}/new`, { waitUntil: 'networkidle' });
+      // 대시보드 강제 이동 후 새 글 쓰기 버튼 탐색
+      await page.goto(`https://www.blogger.com/blog/posts/${blogspotId}`, { waitUntil: 'networkidle' });
       await page.waitForTimeout(2000);
+
+      // 새 글 쓰기 버튼 클릭
+      console.log('[BlogspotPublisher] 새 글 쓰기 화면으로 이동합니다.');
+      try {
+        const newPostBtn = page.locator('div[role="button"]:has-text("새 글"), div[role="button"]:has-text("New Post"), a:has-text("새 글"), a:has-text("New Post"), span:has-text("새 글"), span:has-text("New Post"), div[aria-label="새 글"], div[aria-label="New Post"]').first();
+        await newPostBtn.click();
+        await page.waitForTimeout(3000); // 에디터 로딩 대기
+      } catch (e) {
+        console.log('[BlogspotPublisher] 새 글 쓰기 버튼을 찾을 수 없어 URL로 직접 접근합니다.');
+        await page.goto(`https://www.blogger.com/blog/post/edit/${blogspotId}/new`, { waitUntil: 'networkidle' });
+        await page.waitForTimeout(3000);
+      }
 
       console.log('[BlogspotPublisher] 제목과 본문을 입력합니다.');
       
       // 제목 입력
-      await page.waitForSelector('input[aria-label="Title"], input[aria-label="제목"]', { state: 'visible' });
-      await page.click('input[aria-label="Title"], input[aria-label="제목"]');
+      await page.waitForSelector('input[aria-label="Title"], input[aria-label="제목"], input[placeholder="제목"]', { state: 'visible' });
+      await page.locator('input[aria-label="Title"], input[aria-label="제목"], input[placeholder="제목"]').first().click();
       clipboardy.writeSync(title);
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
       await page.waitForTimeout(500);
