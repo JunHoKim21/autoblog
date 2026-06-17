@@ -17,7 +17,7 @@ export class BlogspotPublisher extends BasePublisher {
     const userDataDir = path.join(process.cwd(), '.chrome-profile-blogspot');
     
     const context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
+      headless: true,
       args: [
         '--disable-blink-features=AutomationControlled',
         '--start-maximized'

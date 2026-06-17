@@ -15,7 +15,7 @@ export class TistoryPublisher extends BasePublisher {
     const userDataDir = path.join(process.cwd(), '.chrome-profile-tistory');
     
     const context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
+      headless: true,
       args: [
         '--disable-blink-features=AutomationControlled',
         '--start-maximized'

@@ -12,7 +12,7 @@ export class NaverPublisher extends BasePublisher {
     const userDataDir = path.join(process.cwd(), '.chrome-profile');
     
     const context = await chromium.launchPersistentContext(userDataDir, {
-      headless: false, // AI 행위 분석 우회를 위해 2026년 기준 헤드풀 필수
+      headless: true, // AI 행위 분석 우회를 위해 2026년 기준 헤드풀 필수
       args: [
         '--disable-blink-features=AutomationControlled',
         '--start-maximized'
