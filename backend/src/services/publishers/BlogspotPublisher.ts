@@ -262,7 +262,7 @@ export class BlogspotPublisher extends BasePublisher {
       const publishBtn = page.locator('div[aria-label="Publish"], div[aria-label="게시"]')
         .or(page.getByText('게시', { exact: true }))
         .or(page.getByText('Publish', { exact: true }))
-        .filter({ state: 'visible' })
+        .filter({ visible: true })
         .first();
         
       if (await publishBtn.count() > 0) {
@@ -274,7 +274,7 @@ export class BlogspotPublisher extends BasePublisher {
         const confirmBtn = page.locator('div[aria-label="Confirm"], div[aria-label="확인"]')
           .or(page.getByText('확인', { exact: true }))
           .or(page.getByText('Confirm', { exact: true }))
-          .filter({ state: 'visible' })
+          .filter({ visible: true })
           .first();
           
         if (await confirmBtn.isVisible({ timeout: 3000 })) {
