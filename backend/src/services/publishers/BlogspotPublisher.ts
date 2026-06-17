@@ -158,6 +158,49 @@ export class BlogspotPublisher extends BasePublisher {
       // 본문 영역 탐색 및 클릭 후 HTML 주입
       let injected = false;
 
+      // 0. HTML 뷰 모드 시도 (Base64 이미지가 iframe 주입 시 증발하는 문제 방지)
+      try {
+        console.log('[BlogspotPublisher] HTML 뷰 모드로 전환을 시도합니다.');
+        // 왼쪽 상단 연필 모양 아이콘 (작성 뷰) 드롭다운 클릭
+        const composeViewBtn = page.locator('div[aria-label="작성 뷰"], div[aria-label="Compose view"]').first();
+        if (await composeViewBtn.isVisible()) {
+          await composeViewBtn.click();
+          await page.waitForTimeout(500);
+          
+          // HTML 뷰 선택
+          const htmlViewBtn = page.locator('text="HTML 뷰"').or(page.locator('text="HTML view"')).first();
+          if (await htmlViewBtn.isVisible()) {
+            await htmlViewBtn.click();
+            await page.waitForTimeout(1500);
+            
+            // 클립보드에 HTML 소스 복사
+            clipboardy.writeSync(processedContent);
+            
+            // HTML 에디터(보통 커서가 활성화됨) 빈 곳 클릭
+            await page.mouse.click(200, 300);
+            
+            await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+            await page.keyboard.press('Backspace');
+            await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
+            await page.waitForTimeout(1500);
+            
+            // 다시 작성 뷰로 복귀
+            const htmlViewDropdown = page.locator('div[aria-label="HTML 뷰"], div[aria-label="HTML view"]').first();
+            if (await htmlViewDropdown.isVisible()) {
+              await htmlViewDropdown.click();
+              await page.waitForTimeout(500);
+              await page.locator('text="작성 뷰"').or(page.locator('text="Compose view"')).first().click();
+              await page.waitForTimeout(1500);
+            }
+            
+            injected = true;
+            console.log('[BlogspotPublisher] HTML 뷰 모드에서 본문 주입 및 이미지 변환 완료.');
+          }
+        }
+      } catch (e) {
+        console.log('[BlogspotPublisher] HTML 뷰 전환 실패. iframe/div 주입으로 넘어갑니다.');
+      }
+
       // 1. 프레임(iframe) 내부의 body[contenteditable="true"] 탐색 (Blogger 기본 방식)
       const frames = page.frames();
       for (const frame of frames) {
@@ -206,8 +249,8 @@ export class BlogspotPublisher extends BasePublisher {
       if (searchDescription) {
         try {
           console.log('[BlogspotPublisher] 검색 설명 입력 시도...');
-          // 사이드바의 '검색 설명' 버튼 (아코디언)
-          const searchDescBtn = page.locator('div[aria-label="Search description"], div[aria-label="검색 설명"], span:has-text("검색 설명"), span:has-text("Search description")').first();
+          // 사이드바의 '검색 설명' 버튼 (정확한 텍스트 매칭)
+          const searchDescBtn = page.locator('text="검색 설명"').or(page.locator('text="Search description"')).first();
           if (await searchDescBtn.isVisible()) {
             await searchDescBtn.click();
             await page.waitForTimeout(500);

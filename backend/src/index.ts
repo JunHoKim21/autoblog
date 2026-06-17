@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import 'dotenv/config'; // Trigger restart
 import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
