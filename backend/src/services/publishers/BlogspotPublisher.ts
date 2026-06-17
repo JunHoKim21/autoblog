@@ -179,55 +179,54 @@ export class BlogspotPublisher extends BasePublisher {
       }
       await page.waitForTimeout(1000);
 
-      // 이미지 드래그 앤 드롭 업로드 (Base64가 거부되는 문제 해결)
+      // 이미지 구글 피커 업로드 (드래그앤드롭 실패 대비 확실한 방법)
       if (params.mediaPaths && params.mediaPaths.length > 0) {
-        console.log('[BlogspotPublisher] 로컬 이미지를 드래그 앤 드롭으로 업로드합니다.');
-        
-        let targetLocator = page.locator('div[contenteditable="true"], .ProseMirror').first();
-        const frames = page.frames();
-        for (const frame of frames) {
-          if (await frame.locator('body[contenteditable="true"], body.editable').count() > 0) {
-            targetLocator = frame.locator('body[contenteditable="true"], body.editable').first();
-            break;
-          }
-        }
-
-        for (const media of params.mediaPaths) {
-          const filename = path.basename(media);
-          const localFilePath = path.join(__dirname, '../../../../uploads', filename);
-          if (fs.existsSync(localFilePath)) {
-            const fileData = fs.readFileSync(localFilePath);
-            const ext = path.extname(filename).toLowerCase();
-            let mimeType = 'image/png';
-            if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
-            if (ext === '.gif') mimeType = 'image/gif';
-            if (ext === '.webp') mimeType = 'image/webp';
+        console.log('[BlogspotPublisher] 로컬 이미지를 구글 피커(컴퓨터에서 업로드)를 통해 확실하게 업로드합니다.');
+        try {
+          // 1. 툴바에서 이미지 삽입 버튼 클릭
+          const insertImageBtn = page.locator('div[aria-label="이미지 삽입"], div[aria-label="Insert image"], div[data-tooltip="이미지 삽입"], span:has-text("이미지 삽입")').filter({ visible: true }).first();
+          if (await insertImageBtn.isVisible()) {
+            await insertImageBtn.click();
+            await page.waitForTimeout(1000);
             
-            const base64Data = fileData.toString('base64');
-
-            try {
-              await targetLocator.evaluate(async (el, fileInfo) => {
-                const res = await fetch(`data:${fileInfo.mimeType};base64,${fileInfo.base64Data}`);
-                const blob = await res.blob();
-                const file = new File([blob], fileInfo.filename, { type: fileInfo.mimeType });
-                
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                
-                const dropEvent = new DragEvent('drop', {
-                  bubbles: true,
-                  cancelable: true,
-                  dataTransfer: dt,
-                });
-                el.dispatchEvent(dropEvent);
-              }, { base64Data, filename, mimeType });
-              
-              console.log(`[BlogspotPublisher] 이미지 드롭 성공: ${filename}`);
-              await page.waitForTimeout(3000); // 다음 이미지 업로드 대기
-            } catch (e) {
-              console.error(`[BlogspotPublisher] 이미지 드롭 실패: ${filename}`, e);
+            // 2. 컴퓨터에서 업로드 클릭
+            const uploadFromComputerBtn = page.locator('text="컴퓨터에서 업로드"').or(page.locator('text="Upload from computer"')).filter({ visible: true }).first();
+            await uploadFromComputerBtn.click();
+            await page.waitForTimeout(3000); // iframe 로딩 대기
+            
+            // 3. Picker iframe 찾기
+            const pickerFrame = page.frameLocator('iframe.picker-frame, iframe.picker, iframe[src*="docs.google.com/picker"]');
+            
+            // 로컬 파일 절대 경로 배열 생성
+            const filePathsToUpload = [];
+            for (const media of params.mediaPaths) {
+              const filename = path.basename(media);
+              const localPath = path.join(__dirname, '../../../../uploads', filename);
+              if (fs.existsSync(localPath)) {
+                filePathsToUpload.push(localPath);
+              }
             }
+            
+            if (filePathsToUpload.length > 0) {
+              // 4. input[type="file"]에 파일 업로드
+              await pickerFrame.locator('input[type="file"]').setInputFiles(filePathsToUpload);
+              console.log(`[BlogspotPublisher] ${filePathsToUpload.length}개 파일 선택 완료, 구글 서버 업로드 진행 중...`);
+              
+              // 5. 업로드 완료 대기 (사진 용량에 따라 다를 수 있으므로 넉넉히 대기)
+              await page.waitForTimeout(7000); 
+              
+              // 6. 선택 버튼 클릭 (선택, Select 등)
+              // 보통 좌측 하단에 파란색 버튼으로 존재합니다.
+              const selectBtn = pickerFrame.locator('div[role="button"]:has-text("선택"), div[role="button"]:has-text("Select")').filter({ visible: true }).last();
+              await selectBtn.click();
+              console.log('[BlogspotPublisher] 구글 피커를 통한 이미지 본문 삽입 완료.');
+              await page.waitForTimeout(3000); // 본문에 렌더링될 시간 대기
+            }
+          } else {
+            console.log('[BlogspotPublisher] 이미지 삽입 툴바 버튼을 찾을 수 없습니다.');
           }
+        } catch (e) {
+          console.error('[BlogspotPublisher] 구글 피커 이미지 업로드 중 에러 발생:', e);
         }
       }
 
