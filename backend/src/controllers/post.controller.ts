@@ -4,7 +4,13 @@ import { runSchedulerSafe } from '../jobs/scheduler';
 
 export const createPost = async (req: Request, res: Response) => {
   try {
-    const { title, content, mediaPaths, scheduledAt, platforms } = req.body;
+    let { title, content, searchDescription, mediaPaths, scheduledAt, platforms } = req.body;
+    
+    // searchDescription 자동 생성 (최대 150자)
+    if (!searchDescription || searchDescription.trim() === '') {
+      const plainText = content.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').trim();
+      searchDescription = plainText.substring(0, 150);
+    }
     
     // platforms: ['TISTORY', 'BLOGSPOT', 'NAVER']
     
@@ -23,6 +29,7 @@ export const createPost = async (req: Request, res: Response) => {
       data: {
         title,
         content,
+        searchDescription,
         mediaPaths: JSON.stringify(mediaPaths || []),
         scheduledAt: parsedScheduledAt,
         status,
@@ -64,7 +71,12 @@ export const getPostById = async (req: Request, res: Response) => {
 export const updatePost = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, content, mediaPaths, scheduledAt } = req.body;
+    let { title, content, searchDescription, mediaPaths, scheduledAt } = req.body;
+
+    if (!searchDescription || searchDescription.trim() === '') {
+      const plainText = content.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').trim();
+      searchDescription = plainText.substring(0, 150);
+    }
 
     const parsedScheduledAt = scheduledAt ? new Date(scheduledAt) : null;
 
@@ -73,6 +85,7 @@ export const updatePost = async (req: Request, res: Response) => {
       data: {
         title,
         content,
+        searchDescription,
         mediaPaths: JSON.stringify(mediaPaths || []),
         scheduledAt: parsedScheduledAt,
         status: parsedScheduledAt ? 'SCHEDULED' : 'PUBLISHING',

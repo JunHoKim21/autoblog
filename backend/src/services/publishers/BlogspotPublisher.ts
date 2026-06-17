@@ -2,10 +2,11 @@ import { BasePublisher, PublishParams, PublishResult } from './Publisher.interfa
 import { chromium } from 'rebrowser-playwright';
 import clipboardy from 'clipboardy';
 import path from 'path';
+import fs from 'fs';
 
 export class BlogspotPublisher extends BasePublisher {
   async publish(params: PublishParams): Promise<PublishResult> {
-    const { title, content } = params;
+    const { title, content, searchDescription } = params;
     // 프론트엔드에서 편의상 googleClientId를 이메일로, googleClientSecret을 비밀번호로 재사용했습니다.
     const { googleClientId: googleEmail, googleClientSecret: googlePw, blogspotId } = this.config;
     
@@ -126,6 +127,34 @@ export class BlogspotPublisher extends BasePublisher {
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
       await page.waitForTimeout(500);
 
+      // 본문 HTML의 로컬 이미지(/uploads/...)를 찾아 Base64로 치환 (Blogger 업로드 우회)
+      let processedContent = content;
+      try {
+        const imgRegex = /<img[^>]+src="(\/uploads\/[^"]+)"[^>]*>/g;
+        let match;
+        while ((match = imgRegex.exec(content)) !== null) {
+          const src = match[1];
+          const filename = path.basename(src);
+          // BlogspotPublisher.ts의 위치는 backend/src/services/publishers 이므로 uploads는 3단계 위
+          const localFilePath = path.join(__dirname, '../../../../uploads', filename);
+          
+          if (fs.existsSync(localFilePath)) {
+            const fileData = fs.readFileSync(localFilePath);
+            const ext = path.extname(filename).toLowerCase();
+            let mimeType = 'image/png';
+            if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+            if (ext === '.gif') mimeType = 'image/gif';
+            if (ext === '.webp') mimeType = 'image/webp';
+            
+            const base64Data = `data:${mimeType};base64,${fileData.toString('base64')}`;
+            processedContent = processedContent.replace(src, base64Data);
+            console.log(`[BlogspotPublisher] 로컬 이미지 변환 완료: ${filename}`);
+          }
+        }
+      } catch (err) {
+        console.error('[BlogspotPublisher] 이미지 Base64 변환 실패:', err);
+      }
+
       // 본문 영역 탐색 및 클릭 후 HTML 주입
       let injected = false;
 
@@ -139,7 +168,7 @@ export class BlogspotPublisher extends BasePublisher {
             await page.waitForTimeout(500);
             await frame.evaluate((html) => {
               document.execCommand('insertHTML', false, html);
-            }, content);
+            }, processedContent);
             injected = true;
             console.log('[BlogspotPublisher] 본문 iframe 영역에 HTML 삽입 완료.');
             break;
@@ -157,7 +186,7 @@ export class BlogspotPublisher extends BasePublisher {
           await page.waitForTimeout(500);
           await page.evaluate((html) => {
             document.execCommand('insertHTML', false, html);
-          }, content);
+          }, processedContent);
           injected = true;
           console.log('[BlogspotPublisher] 본문 div 영역에 HTML 삽입 완료.');
         }
@@ -166,12 +195,35 @@ export class BlogspotPublisher extends BasePublisher {
       // 3. 둘 다 실패했을 경우, 무식하게 붙여넣기 (사용자 클릭 우회)
       if (!injected) {
         console.log('[BlogspotPublisher] 경고: 본문 영역을 명시적으로 찾지 못해 강제 붙여넣기를 시도합니다.');
-        clipboardy.writeSync(content);
+        clipboardy.writeSync(processedContent);
         await page.keyboard.press('Tab');
         await page.waitForTimeout(500);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
       }
       await page.waitForTimeout(1000);
+
+      // 검색 설명 (Search Description) 자동 입력
+      if (searchDescription) {
+        try {
+          console.log('[BlogspotPublisher] 검색 설명 입력 시도...');
+          // 사이드바의 '검색 설명' 버튼 (아코디언)
+          const searchDescBtn = page.locator('div[aria-label="Search description"], div[aria-label="검색 설명"], span:has-text("검색 설명"), span:has-text("Search description")').first();
+          if (await searchDescBtn.isVisible()) {
+            await searchDescBtn.click();
+            await page.waitForTimeout(500);
+            
+            const searchDescTextarea = page.locator('textarea[aria-label="Search description"], textarea[aria-label="검색 설명"]').first();
+            if (await searchDescTextarea.isVisible()) {
+              await searchDescTextarea.fill(searchDescription);
+              console.log('[BlogspotPublisher] 검색 설명 입력 완료.');
+            }
+          } else {
+            console.log('[BlogspotPublisher] 검색 설명 설정이 비활성화되어 입력 건너뜀.');
+          }
+        } catch (err) {
+          console.log('[BlogspotPublisher] 검색 설명 입력 에러(무시됨):', err);
+        }
+      }
 
       // 발행 버튼 클릭 (aria-label="Publish" 또는 "게시")
       const publishBtn = page.locator('div[aria-label="Publish"], div[aria-label="게시"], span:has-text("게시"), span:has-text("Publish")').first();

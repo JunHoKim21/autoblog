@@ -11,6 +11,7 @@ const EditorPage = () => {
   const navigate = useNavigate();
 
   const [title, setTitle] = useState('');
+  const [searchDescription, setSearchDescription] = useState('');
   const [mediaPaths, setMediaPaths] = useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = useState('');
 
@@ -74,6 +75,9 @@ const EditorPage = () => {
         if (post.content) {
           editor.commands.setContent(post.content);
         }
+        if (post.searchDescription) {
+          setSearchDescription(post.searchDescription);
+        }
         setMediaPaths(JSON.parse(post.mediaPaths || '[]'));
         if (post.scheduledAt) {
           // Format ISO string to YYYY-MM-DDTHH:mm
@@ -103,6 +107,7 @@ const EditorPage = () => {
       const payload = {
         title,
         content: editor.getHTML(),
+        searchDescription,
         mediaPaths,
         scheduledAt: isImmediate ? null : scheduledAt,
         platforms: ['NAVER', 'TISTORY', 'BLOGSPOT']
@@ -116,6 +121,7 @@ const EditorPage = () => {
         await axios.post('/api/posts', payload);
         alert(isImmediate ? '즉시 발송이 요청되었습니다!' : '발행이 예약되었습니다!');
         setTitle('');
+        setSearchDescription('');
         editor.commands.setContent('');
         setMediaPaths([]);
         setScheduledAt('');
@@ -134,6 +140,15 @@ const EditorPage = () => {
           placeholder="제목을 입력하세요"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+        />
+
+        <textarea
+          className="w-full text-sm text-gray-700 border border-gray-200 rounded-md p-3 mb-4 focus:outline-none focus:border-blue-400 resize-none"
+          placeholder="검색 설명 (최대 150자). 비워둘 경우 본문 내용을 바탕으로 자동 생성됩니다."
+          value={searchDescription}
+          maxLength={150}
+          rows={2}
+          onChange={(e) => setSearchDescription(e.target.value)}
         />
         
         <div className="border border-gray-200 rounded-lg p-4 min-h-[400px]">

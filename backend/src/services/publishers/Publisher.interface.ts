@@ -1,6 +1,7 @@
 export interface PublishParams {
   title: string;
   content: string;
+  searchDescription?: string | null;
   mediaPaths: string[];
 }
 

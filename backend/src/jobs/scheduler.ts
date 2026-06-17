@@ -76,11 +76,14 @@ export const processScheduledPosts = async (prisma: PrismaClient) => {
     try {
       console.log(`[Scheduler] Publishing to ${plat.platform} for post ${plat.postId}...`);
       
-      const result = await publisher.publish({
+      const publishParams = {
         title: plat.post.title,
         content: plat.post.content,
+        searchDescription: plat.post.searchDescription,
         mediaPaths: JSON.parse(plat.post.mediaPaths || '[]')
-      });
+      };
+
+      const result = await publisher.publish(publishParams);
 
       if (result.success) {
         await prisma.platformStatus.update({
