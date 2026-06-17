@@ -28,11 +28,11 @@ export class BlogspotPublisher extends BasePublisher {
     page.setDefaultTimeout(30000);
 
     try {
-      // 블로그스팟 새 글 쓰기 페이지로 바로 이동
-      await page.goto(`https://www.blogger.com/blog/posts/${blogspotId}`, { waitUntil: 'networkidle' });
+      // 블로그스팟 홈으로 이동 (자동으로 로그인된 메인 블로그 대시보드로 리다이렉트됨)
+      await page.goto(`https://www.blogger.com/`, { waitUntil: 'networkidle' });
       await page.waitForTimeout(2000);
 
-      // 구글 로그인 감지
+      // 구글 로그인 감지 (아직 로그인이 안 된 경우)
       if (page.url().includes('accounts.google.com')) {
         console.log('[BlogspotPublisher] 구글 로그인을 진행합니다...');
         
@@ -62,9 +62,9 @@ export class BlogspotPublisher extends BasePublisher {
         }
       }
 
-      // 대시보드 강제 이동 후 새 글 쓰기 버튼 탐색
-      await page.goto(`https://www.blogger.com/blog/posts/${blogspotId}`, { waitUntil: 'networkidle' });
-      await page.waitForTimeout(2000);
+      // 로그인 완료 후 홈 화면으로 다시 이동하여 확실히 대시보드 안착
+      await page.goto(`https://www.blogger.com/`, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(3000);
 
       // 새 글 쓰기 버튼 클릭
       console.log('[BlogspotPublisher] 새 글 쓰기 화면으로 이동합니다.');
