@@ -50,6 +50,7 @@ model PlatformStatus {
   errorMsg    String?
   externalUrl String?  
   post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  updatedAt   DateTime @default(now()) @updatedAt
 
   @@unique([postId, platform])
 }
