@@ -90,36 +90,43 @@ export class TistoryPublisher extends BasePublisher {
       await page.locator('#post-title-inp').fill(title);
       await page.waitForTimeout(500);
 
-      // 본문 입력 (ProseMirror 에디터 대응)
+      // 본문 입력 (HTML 모드로 전환하여 소스코드 직접 붙여넣기)
       try {
-        const editorSelector = '.ProseMirror';
-        await page.waitForSelector(editorSelector, { state: 'visible', timeout: 5000 });
-        await page.click(editorSelector);
+        console.log('[TistoryPublisher] HTML 모드로 전환하여 본문을 입력합니다.');
+        // 1. 모드 변경 드롭다운 열기
+        await page.click('button:has-text("기본모드"), #editor-mode-layer-btn-open', { timeout: 3000 });
+        await page.waitForTimeout(500);
         
-        await page.evaluate((htmlContent) => {
-          const editorDiv = document.querySelector('.ProseMirror') as HTMLElement;
-          if (editorDiv) {
-            const dataTransfer = new DataTransfer();
-            dataTransfer.setData('text/html', htmlContent);
-            dataTransfer.setData('text/plain', htmlContent);
-            
-            const pasteEvent = new ClipboardEvent('paste', {
-              clipboardData: dataTransfer,
-              bubbles: true,
-              cancelable: true
-            });
-            editorDiv.dispatchEvent(pasteEvent);
-          }
-        }, content);
+        // 2. HTML 모드 선택
+        await page.click('button:has-text("HTML"), #editor-mode-html, li:has-text("HTML")', { timeout: 3000 });
         await page.waitForTimeout(1000);
+
+        // 3. HTML 에디터(CodeMirror) 영역 클릭
+        await page.click('.CodeMirror', { timeout: 3000 });
+        
+        // 4. 클립보드에 HTML 소스 복사 후 붙여넣기
+        clipboardy.writeSync(content);
+        
+        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+        await page.keyboard.press('Backspace');
+        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
+        await page.waitForTimeout(1500);
+        
+        // 5. 다시 기본모드로 복귀 (발행 버튼 활성화를 위해)
+        await page.click('button:has-text("HTML"), #editor-mode-layer-btn-open', { timeout: 3000 });
+        await page.waitForTimeout(500);
+        await page.click('button:has-text("기본모드"), #editor-mode-basic, li:has-text("기본모드")', { timeout: 3000 });
+        await page.waitForTimeout(1500);
       } catch (e) {
-        console.log('[TistoryPublisher] ProseMirror를 찾을 수 없어 iframe 폴백을 시도합니다.');
-        await page.evaluate((htmlContent) => {
-          const iframe = document.querySelector('#tx_canvas_source') as HTMLIFrameElement;
-          if (iframe && iframe.contentDocument) {
-            iframe.contentDocument.body.innerHTML = htmlContent;
-          }
-        }, content);
+        console.log('[TistoryPublisher] HTML 모드 전환 실패, ProseMirror 강제 주입을 시도합니다.');
+        try {
+          const editorSelector = '.ProseMirror';
+          await page.click(editorSelector, { timeout: 3000 });
+          clipboardy.writeSync(content);
+          await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
+        } catch (err) {
+          console.log('[TistoryPublisher] 모든 본문 입력 방식 실패');
+        }
       }
 
       // 하단 완료 버튼 클릭
