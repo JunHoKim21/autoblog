@@ -208,12 +208,20 @@ export class BlogspotPublisher extends BasePublisher {
             }
             
             if (filePathsToUpload.length > 0) {
-              // 4. input[type="file"]에 파일 업로드
-              await pickerFrame.locator('input[type="file"]').setInputFiles(filePathsToUpload);
+              // 4. 찾아보기 버튼 클릭을 통한 확실한 파일 선택 (OS 파일 선택창 후킹)
+              console.log('[BlogspotPublisher] 찾아보기 버튼 클릭 및 파일 선택 대기 중...');
+              const browseBtn = pickerFrame.locator('button:has-text("찾아보기"), div[role="button"]:has-text("찾아보기"), span:has-text("찾아보기"), text="찾아보기", text="Browse"').filter({ visible: true }).first();
+              
+              const [fileChooser] = await Promise.all([
+                page.waitForEvent('filechooser', { timeout: 15000 }),
+                browseBtn.click()
+              ]);
+              
+              await fileChooser.setFiles(filePathsToUpload);
               console.log(`[BlogspotPublisher] ${filePathsToUpload.length}개 파일 선택 완료, 구글 서버 업로드 진행 중...`);
               
-              // 5. 업로드 완료 대기 (사진 용량에 따라 다를 수 있으므로 넉넉히 대기)
-              await page.waitForTimeout(7000); 
+              // 5. 업로드 완료 대기 (사진 용량에 따라 넉넉히 대기)
+              await page.waitForTimeout(10000); 
               
               // 6. 선택 버튼 클릭 (선택, Select 등)
               // 보통 좌측 하단에 파란색 버튼으로 존재합니다.
