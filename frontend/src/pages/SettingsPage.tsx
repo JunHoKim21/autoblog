@@ -103,42 +103,20 @@ const SettingsPage = () => {
 
           {activeTab === 'blogspot' && (
             <div className="space-y-4 animate-fade-in">
-              <h2 className="text-lg font-bold">Blogspot & Supabase 설정</h2>
+              <h2 className="text-lg font-bold">블로그스팟 (구글 계정) 설정</h2>
+              <p className="text-sm text-gray-500 mb-4">복잡한 API 연동 없이 로봇이 자동으로 로그인하여 글을 작성합니다.</p>
               
-              <div className="pt-2 pb-2">
-                <h3 className="font-semibold text-gray-800">1. 이미지 파이프라인 (Supabase)</h3>
-                <div className="mt-2 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Supabase URL</label>
-                    <input name="supabaseUrl" value={config.supabaseUrl} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Supabase Key (Anon / Service Role)</label>
-                    <input name="supabaseKey" type="password" value={config.supabaseKey} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
-                  </div>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Google Email (ID)</label>
+                <input name="googleClientId" value={config.googleClientId} onChange={handleChange} placeholder="example@gmail.com" className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
               </div>
-
-              <div className="pt-4 border-t border-gray-200 pb-2">
-                <h3 className="font-semibold text-gray-800">2. 구글 OAuth (Blogspot API)</h3>
-                <div className="mt-2 space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Google Client ID</label>
-                    <input name="googleClientId" type="password" value={config.googleClientId} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Google Client Secret</label>
-                    <input name="googleClientSecret" type="password" value={config.googleClientSecret} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Google Refresh Token</label>
-                    <input name="googleRefreshToken" type="password" value={config.googleRefreshToken} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Blogspot ID</label>
-                    <input name="blogspotId" value={config.blogspotId} onChange={handleChange} className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
-                  </div>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Google Password</label>
+                <input name="googleClientSecret" type="password" value={config.googleClientSecret} onChange={handleChange} placeholder="비밀번호" className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Blogspot 주소 (xxx.blogspot.com)</label>
+                <input name="blogspotId" value={config.blogspotId} onChange={handleChange} placeholder="xxx" className="w-full border border-gray-300 rounded p-2 focus:ring-blue-500 focus:border-blue-500" />
               </div>
             </div>
           )}
