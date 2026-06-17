@@ -56,11 +56,18 @@ export class TistoryPublisher extends BasePublisher {
         
         clipboardy.writeSync('');
 
-        await page.click('button[type="submit"]');
-        
-        await page.waitForNavigation({ waitUntil: 'networkidle' });
-        await page.goto(`https://${tistoryBlog}.tistory.com/manage/post`, { waitUntil: 'networkidle' });
-        await page.waitForTimeout(2000);
+        await page.click('[type="submit"]');
+      
+      // 2단계 인증(2FA) 방어 로직: 카카오 로그인을 벗어날 때까지 최대 60초 대기
+      console.log('[TistoryPublisher] 로그인 제출 완료. 2단계 인증이 뜰 경우 60초 안에 브라우저에서 수동으로 인증 번호를 입력해주세요!');
+      try {
+        await page.waitForURL((url) => !url.href.includes('accounts.kakao.com/login'), { timeout: 60000 });
+      } catch (e) {
+        console.log('[TistoryPublisher] 2단계 인증 대기 시간(60초) 초과 또는 이미 넘어갔습니다.');
+      }
+      
+      await page.goto(`https://${tistoryBlog}.tistory.com/manage/post`, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(2000);
       }
 
       // --- 에디터 자동화 로직 ---

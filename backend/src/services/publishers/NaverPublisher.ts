@@ -41,7 +41,12 @@ export class NaverPublisher extends BasePublisher {
       
       await page.click('[type="submit"]');
       
-      await page.waitForNavigation({ waitUntil: 'networkidle' });
+      console.log('[NaverPublisher] 로그인 제출 완료. 2단계 인증이 뜰 경우 60초 안에 브라우저에서 수동으로 인증 번호를 입력해주세요!');
+      try {
+        await page.waitForURL((url) => !url.href.includes('nid.naver.com'), { timeout: 60000 });
+      } catch (e) {
+        console.log('[NaverPublisher] 2단계 인증 대기 시간(60초) 초과 또는 이미 넘어갔습니다.');
+      }
       clipboardy.writeSync('');
 
       // 스마트에디터 ONE 접속
