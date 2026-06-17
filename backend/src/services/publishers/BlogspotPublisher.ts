@@ -259,14 +259,24 @@ export class BlogspotPublisher extends BasePublisher {
 
       // 발행 버튼 클릭 (aria-label="Publish" 또는 "게시")
       console.log('[BlogspotPublisher] 발행(게시) 버튼 클릭 시도...');
-      const publishBtn = page.locator('div[aria-label="Publish"], div[aria-label="게시"]').or(page.getByText('게시', { exact: true })).or(page.getByText('Publish', { exact: true })).first();
-      if (await publishBtn.isVisible()) {
+      const publishBtn = page.locator('div[aria-label="Publish"], div[aria-label="게시"]')
+        .or(page.getByText('게시', { exact: true }))
+        .or(page.getByText('Publish', { exact: true }))
+        .filter({ state: 'visible' })
+        .first();
+        
+      if (await publishBtn.count() > 0) {
         await publishBtn.click();
         await page.waitForTimeout(1500);
         
         // 최종 확인 팝업 "Confirm" / "확인"
         console.log('[BlogspotPublisher] 발행 확인 팝업 클릭 시도...');
-        const confirmBtn = page.locator('div[aria-label="Confirm"], div[aria-label="확인"]').or(page.getByText('확인', { exact: true })).or(page.getByText('Confirm', { exact: true })).last();
+        const confirmBtn = page.locator('div[aria-label="Confirm"], div[aria-label="확인"]')
+          .or(page.getByText('확인', { exact: true }))
+          .or(page.getByText('Confirm', { exact: true }))
+          .filter({ state: 'visible' })
+          .first();
+          
         if (await confirmBtn.isVisible({ timeout: 3000 })) {
           await confirmBtn.click();
           console.log('[BlogspotPublisher] 최종 발행 확인 완료.');
