@@ -210,26 +210,42 @@ export class BlogspotPublisher extends BasePublisher {
               // 3. Picker iframe 찾기
               const pickerFrame = page.frameLocator('iframe.picker-frame, iframe.picker, iframe[src*="docs.google.com/picker"]');
               
-              // 4. 찾아보기 버튼 클릭을 통한 확실한 파일 선택 (OS 파일 선택창 후킹)
-              console.log(`[BlogspotPublisher] 찾아보기 버튼 클릭 및 ${filePathsToUpload.length}개 파일 선택 대기 중...`);
-              const browseBtn = pickerFrame.locator('button:has-text("찾아보기"), div[role="button"]:has-text("찾아보기"), span:has-text("찾아보기"), text="찾아보기", text="Browse"').filter({ visible: true }).first();
-              
-              const [fileChooser] = await Promise.all([
-                page.waitForEvent('filechooser', { timeout: 15000 }),
-                browseBtn.click()
-              ]);
-              
-              await fileChooser.setFiles(filePathsToUpload);
-              console.log(`[BlogspotPublisher] 파일 선택 완료, 구글 서버 업로드 진행 중...`);
-              
-              // 5. 업로드 완료 대기 (사진 용량에 따라 넉넉히 대기)
-              await page.waitForTimeout(10000); 
-              
-              // 6. 선택 버튼 클릭 (선택, Select 등)
-              const selectBtn = pickerFrame.locator('div[role="button"]:has-text("선택"), div[role="button"]:has-text("Select")').filter({ visible: true }).last();
-              await selectBtn.click();
-              console.log('[BlogspotPublisher] 구글 피커를 통한 이미지 본문 삽입 완료.');
-              await page.waitForTimeout(3000); // 본문에 렌더링될 시간 대기
+              try {
+                // 4. 찾아보기 버튼 클릭을 통한 확실한 파일 선택 (OS 파일 선택창 후킹)
+                console.log(`[BlogspotPublisher] 찾아보기 버튼 클릭 및 ${filePathsToUpload.length}개 파일 선택 대기 중...`);
+                const browseBtn = pickerFrame.getByRole('button', { name: /찾아보기|Browse/i }).filter({ visible: true }).first();
+                
+                const [fileChooser] = await Promise.all([
+                  page.waitForEvent('filechooser', { timeout: 15000 }),
+                  browseBtn.click()
+                ]);
+                
+                await fileChooser.setFiles(filePathsToUpload);
+                console.log(`[BlogspotPublisher] 파일 선택 완료, 구글 서버 업로드 진행 중...`);
+                
+                // 5. 업로드 완료 대기 (사진 용량에 따라 넉넉히 대기)
+                await page.waitForTimeout(10000); 
+                
+                // 6. 선택 버튼 클릭 (선택, Select 등)
+                const selectBtn = pickerFrame.getByRole('button', { name: /선택|Select/i }).filter({ visible: true }).last();
+                await selectBtn.click();
+                console.log('[BlogspotPublisher] 구글 피커를 통한 이미지 본문 삽입 완료.');
+                await page.waitForTimeout(3000); // 본문에 렌더링될 시간 대기
+              } catch (pickerErr) {
+                console.error('[BlogspotPublisher] 피커 업로드 중 에러 발생:', pickerErr);
+                console.log('[BlogspotPublisher] 진행을 위해 팝업창 닫기를 시도합니다.');
+                
+                // 에러 발생 시 X 버튼(닫기)을 누르거나 Escape 키를 눌러 다음 로직 방해 방지
+                await page.keyboard.press('Escape');
+                await page.waitForTimeout(1000);
+                
+                // 만약 여전히 팝업이 있다면 강제로 닫기 버튼 클릭
+                const closeBtn = page.locator('div[aria-label="닫기"], div[aria-label="Close"], button[aria-label="닫기"]').filter({ visible: true }).first();
+                if (await closeBtn.isVisible()) {
+                  await closeBtn.click();
+                  await page.waitForTimeout(1000);
+                }
+              }
             } else {
               console.log('[BlogspotPublisher] 이미지 삽입 툴바 버튼을 찾을 수 없습니다.');
             }
