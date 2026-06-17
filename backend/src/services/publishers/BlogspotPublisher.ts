@@ -36,16 +36,18 @@ export class BlogspotPublisher extends BasePublisher {
       if (page.url().includes('accounts.google.com')) {
         console.log('[BlogspotPublisher] 구글 로그인을 진행합니다...');
         
-        await page.waitForSelector('input[type="email"]', { state: 'visible' });
-        await page.click('input[type="email"]');
+        const emailSelector = 'input[type="email"], input[name="identifier"], #identifierId';
+        await page.waitForSelector(emailSelector, { state: 'visible' });
+        await page.click(emailSelector);
         clipboardy.writeSync(googleEmail);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
         await page.keyboard.press('Enter');
         
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(3000); // 다음 페이지 넘어갈 때까지 충분히 대기
         
-        await page.waitForSelector('input[type="password"]', { state: 'visible' });
-        await page.click('input[type="password"]');
+        const pwSelector = 'input[type="password"], input[name="Passwd"], input[name="password"]';
+        await page.waitForSelector(pwSelector, { state: 'visible' });
+        await page.click(pwSelector);
         clipboardy.writeSync(googlePw);
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
         await page.keyboard.press('Enter');
