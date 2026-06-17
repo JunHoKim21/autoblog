@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../db';
+import { runSchedulerSafe } from '../jobs/scheduler';
 
 export const createPost = async (req: Request, res: Response) => {
   try {
@@ -35,9 +36,9 @@ export const createPost = async (req: Request, res: Response) => {
       include: { platformStatuses: true }
     });
 
-    // 만약 scheduledAt이 없다면 여기서 즉시 발행(PUBLISHING) 로직을 비동기로 호출할 수 있습니다.
+    // 만약 scheduledAt이 없다면 즉시 발행 로직을 비동기로 호출
     if (!scheduledAt) {
-      // TODO: 즉시 발행 로직 트리거
+      runSchedulerSafe(prisma).catch(console.error);
     }
 
     res.status(201).json({ success: true, post: newPost });
@@ -83,6 +84,10 @@ export const updatePost = async (req: Request, res: Response) => {
         }
       }
     });
+
+    if (!parsedScheduledAt) {
+      runSchedulerSafe(prisma).catch(console.error);
+    }
 
     res.json({ success: true, post: updatedPost });
   } catch (error: any) {

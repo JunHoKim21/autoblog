@@ -3,6 +3,23 @@ import { NaverPublisher } from '../services/publishers/NaverPublisher';
 import { TistoryPublisher } from '../services/publishers/TistoryPublisher';
 import { BlogspotPublisher } from '../services/publishers/BlogspotPublisher';
 
+export let isPublishing = false;
+
+export const runSchedulerSafe = async (prisma: PrismaClient) => {
+  if (isPublishing) {
+    console.log(`[Scheduler] Skip: Previous publish job is still running.`);
+    return;
+  }
+  isPublishing = true;
+  try {
+    await processScheduledPosts(prisma);
+  } catch (error) {
+    console.error(`[Scheduler] Error in processScheduledPosts:`, error);
+  } finally {
+    isPublishing = false;
+  }
+};
+
 export const processScheduledPosts = async (prisma: PrismaClient) => {
   // 1. Deadlock Recovery: 상태가 PUBLISHING인 채로 10분이 지난 트랜잭션 복구
   const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
