@@ -62,8 +62,8 @@ export class BlogspotPublisher extends BasePublisher {
         }
       }
 
-      // 로그인 완료 후 홈 화면으로 다시 이동하여 확실히 대시보드 안착
-      await page.goto(`https://www.blogger.com/`, { waitUntil: 'networkidle' });
+      // 로그인 완료 후 홈 화면으로 다시 이동하여 확실히 대시보드 안착 (자동으로 맞는 계정 /u/X/ 로 리다이렉트됨)
+      await page.goto(`https://www.blogger.com/blog/posts/${blogspotId}`, { waitUntil: 'networkidle' });
       await page.waitForTimeout(3000);
 
       // 다중 구글 계정(/u/4/ 등) 및 실제 숫자형 블로그 ID 추출
@@ -80,17 +80,35 @@ export class BlogspotPublisher extends BasePublisher {
         console.log('[BlogspotPublisher] 경고: 다중 계정 URL을 추출하지 못했습니다. 기본 경로를 사용합니다.');
       }
 
-      // 새 글 쓰기 버튼 클릭
+      // 새 글 쓰기 버튼 클릭 (Playwright Selector 이슈 우회, Native JS Click)
       console.log('[BlogspotPublisher] 새 글 쓰기 화면으로 이동합니다.');
       try {
-        // '새 글' 텍스트를 포함하는 요소 중 가장 먼저 보이는 것을 클릭 (광범위 매칭)
-        const newPostBtn = page.locator('text="새 글", text="New Post", div[role="button"]:has-text("새 글")').first();
-        await newPostBtn.click({ timeout: 3000 });
-        await page.waitForTimeout(3000); // 에디터 로딩 대기
+        const clicked = await page.evaluate(() => {
+          // '새 글' 또는 'New Post' 텍스트를 포함하는 요소 탐색
+          const elements = Array.from(document.querySelectorAll('a, div[role="button"], span'));
+          for (const el of elements) {
+            const text = el.textContent || '';
+            if (text.includes('새 글') || text.includes('New Post')) {
+              // 해당 요소를 클릭하거나 가장 가까운 클릭 가능한 부모 요소를 클릭
+              const target = el.closest('a') || el.closest('[role="button"]') || el;
+              (target as HTMLElement).click();
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (!clicked) {
+          console.log('[BlogspotPublisher] 경고: 화면에서 새 글 쓰기 버튼을 찾지 못했습니다.');
+        } else {
+          console.log('[BlogspotPublisher] 새 글 쓰기 버튼 클릭 성공!');
+        }
+        
+        // 에디터 로딩 대기 (URL 변경 및 DOM 업데이트)
+        await page.waitForTimeout(5000); 
+
       } catch (e) {
-        console.log(`[BlogspotPublisher] 새 글 쓰기 버튼을 찾을 수 없어 URL(${baseUrl}/post/edit/${realBlogId}/new)로 직접 접근합니다.`);
-        await page.goto(`${baseUrl}/post/edit/${realBlogId}/new`, { waitUntil: 'networkidle' });
-        await page.waitForTimeout(3000);
+        console.log(`[BlogspotPublisher] 새 글 쓰기 버튼 클릭 중 에러 발생: ${e}`);
       }
 
       console.log('[BlogspotPublisher] 제목과 본문을 입력합니다.');
