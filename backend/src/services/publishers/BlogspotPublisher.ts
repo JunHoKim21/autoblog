@@ -62,23 +62,29 @@ export class BlogspotPublisher extends BasePublisher {
         }
       }
 
-      // 로그인 완료 후 홈 화면으로 다시 이동하여 확실히 대시보드 안착 (자동으로 맞는 계정 /u/X/ 로 리다이렉트됨)
-      await page.goto(`https://www.blogger.com/blog/posts/${blogspotId}`, { waitUntil: 'networkidle' });
-      await page.waitForTimeout(3000);
-
-      // 다중 구글 계정(/u/4/ 등) 및 실제 숫자형 블로그 ID 추출
-      let realBlogId = blogspotId;
-      let baseUrl = 'https://www.blogger.com/blog';
-      const currentUrl = page.url();
-      
-      const urlMatch = currentUrl.match(/^(https:\/\/www\.blogger\.com(?:\/u\/\d+)?\/blog)\/posts\/(\d+)/);
-      if (urlMatch) {
-        baseUrl = urlMatch[1]; // 예: https://www.blogger.com/u/4/blog
-        realBlogId = urlMatch[2]; // 예: 7203817485309739956
-        console.log(`[BlogspotPublisher] 다중 계정 기반 URL 및 블로그 ID 추출 완료: ${baseUrl}, ID: ${realBlogId}`);
-      } else {
-        console.log('[BlogspotPublisher] 경고: 다중 계정 URL을 추출하지 못했습니다. 기본 경로를 사용합니다.');
+      // 입력받은 blogspotId가 숫자가 아닌 경우(예: publicaidjk), 실제 블로그에 접속해서 고유 숫자 ID를 파싱해옵니다.
+      let numericBlogId = blogspotId;
+      if (!/^\d+$/.test(blogspotId)) {
+        console.log(`[BlogspotPublisher] 입력된 ID('${blogspotId}')가 숫자가 아닙니다. 실제 블로그에서 숫자 ID를 추출합니다...`);
+        try {
+          await page.goto(`https://${blogspotId}.blogspot.com`, { waitUntil: 'domcontentloaded' });
+          const html = await page.content();
+          const idMatch = html.match(/blogID=(\d+)/i) || html.match(/feeds\/(\d+)\/posts/i);
+          if (idMatch && idMatch[1]) {
+            numericBlogId = idMatch[1];
+            console.log(`[BlogspotPublisher] 숫자형 블로그 ID 추출 성공: ${numericBlogId}`);
+          } else {
+            throw new Error('블로그 숫자형 ID를 찾을 수 없습니다.');
+          }
+        } catch (e) {
+          console.log(`[BlogspotPublisher] 블로그 ID 추출 실패, 기본 URL로 강제 이동 시도합니다. 에러: ${e}`);
+        }
       }
+
+      // 로그인 완료 후 홈 화면으로 다시 이동하여 확실히 대시보드 안착 
+      // (숫자형 ID를 넣으면 구글이 다중 계정인 경우 알아서 /u/4/ 등으로 리다이렉트 해줌)
+      await page.goto(`https://www.blogger.com/blog/posts/${numericBlogId}`, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(3000);
 
       // 새 글 쓰기 버튼 클릭 (Playwright Selector 이슈 우회, Native JS Click)
       console.log('[BlogspotPublisher] 새 글 쓰기 화면으로 이동합니다.');
