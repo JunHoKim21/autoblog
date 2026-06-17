@@ -50,6 +50,8 @@ router.get('/posts', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+router.get('/posts/:id', postController.getPostById);
+router.put('/posts/:id', postController.updatePost);
 
 // 설정 API
 router.get('/config', async (req, res) => {

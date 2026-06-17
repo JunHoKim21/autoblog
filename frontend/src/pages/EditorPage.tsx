@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import { Plugin, PluginKey } from 'prosemirror-state';
 
 const EditorPage = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
   const [title, setTitle] = useState('');
   const [mediaPaths, setMediaPaths] = useState<string[]>([]);
   const [scheduledAt, setScheduledAt] = useState('');
@@ -62,6 +66,28 @@ const EditorPage = () => {
     },
   });
 
+  useEffect(() => {
+    if (id && editor) {
+      axios.get(`/api/posts/${id}`).then(res => {
+        const post = res.data.post;
+        setTitle(post.title);
+        if (post.content) {
+          editor.commands.setContent(post.content);
+        }
+        setMediaPaths(JSON.parse(post.mediaPaths || '[]'));
+        if (post.scheduledAt) {
+          // Format ISO string to YYYY-MM-DDTHH:mm
+          const localTime = new Date(new Date(post.scheduledAt).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+          setScheduledAt(localTime);
+        }
+      }).catch(err => {
+        console.error('Failed to load post:', err);
+        alert('글 정보를 불러오는데 실패했습니다.');
+        navigate('/dashboard');
+      });
+    }
+  }, [id, editor, navigate]);
+
   const handlePublish = async () => {
     if (!title || !editor?.getHTML()) {
       alert('제목과 내용을 모두 입력해주세요.');
@@ -69,19 +95,27 @@ const EditorPage = () => {
     }
     
     try {
-      // DRAFT나 SCHEDULED, platforms 등 추가 메타데이터 연동 가능
-      await axios.post('/api/posts', {
+      const payload = {
         title,
         content: editor.getHTML(),
         mediaPaths,
         scheduledAt: scheduledAt || null,
         platforms: ['NAVER', 'TISTORY', 'BLOGSPOT']
-      });
-      alert('발행이 예약되었습니다!');
-      setTitle('');
-      editor.commands.setContent('');
-      setMediaPaths([]);
-      setScheduledAt('');
+      };
+
+      if (id) {
+        await axios.put(`/api/posts/${id}`, payload);
+        alert('글 수정이 완료되었습니다!');
+        navigate('/dashboard');
+      } else {
+        await axios.post('/api/posts', payload);
+        alert('발행이 예약되었습니다!');
+        setTitle('');
+        editor.commands.setContent('');
+        setMediaPaths([]);
+        setScheduledAt('');
+        navigate('/dashboard');
+      }
     } catch (err) {
       alert('발행 요청 중 오류가 발생했습니다.');
     }
@@ -112,7 +146,7 @@ const EditorPage = () => {
             onClick={handlePublish}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
           >
-            발행 예약하기
+            {id ? '수정 완료하기' : '발행 예약하기'}
           </button>
         </div>
       </div>

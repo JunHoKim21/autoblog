@@ -42,3 +42,40 @@ export const createPost = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+export const getPostById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const post = await prisma.post.findUnique({
+      where: { id: Number(id) }
+    });
+    if (!post) return res.status(404).json({ success: false, error: 'Post not found' });
+    res.json({ success: true, post });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const updatePost = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { title, content, mediaPaths, scheduledAt } = req.body;
+
+    const parsedScheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+
+    const updatedPost = await prisma.post.update({
+      where: { id: Number(id) },
+      data: {
+        title,
+        content,
+        mediaPaths: JSON.stringify(mediaPaths || []),
+        scheduledAt: parsedScheduledAt
+      }
+    });
+
+    res.json({ success: true, post: updatedPost });
+  } catch (error: any) {
+    console.error('Update Post Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

@@ -22,6 +22,7 @@ function App() {
         <main className="flex-1 py-8">
           <Routes>
             <Route path="/" element={<EditorPage />} />
+            <Route path="/editor/:id" element={<EditorPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 interface PlatformStatus {
   id: number;
@@ -59,7 +60,14 @@ const DashboardPage = () => {
         {posts.map((post) => (
           <div key={post.id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">{post.title}</h3>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                {post.title}
+                {post.status === 'SCHEDULED' && (
+                  <Link to={`/editor/${post.id}`} className="text-xs font-normal text-blue-600 border border-blue-600 px-2 py-0.5 rounded hover:bg-blue-50 transition-colors">
+                    수정
+                  </Link>
+                )}
+              </h3>
               <div className="text-sm text-gray-500">
                 작성일: {new Date(post.createdAt).toLocaleString()} <br />
                 {post.scheduledAt && `예약일: ${new Date(post.scheduledAt).toLocaleString()}`}
