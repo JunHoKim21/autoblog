@@ -126,44 +126,51 @@ export class BlogspotPublisher extends BasePublisher {
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
       await page.waitForTimeout(500);
 
-      // 본문 입력 (HTML 뷰로 전환이 복잡하므로 클립보드 Paste Event로 본문 에디터(iframe 안의 body)에 주입 시도)
-      // Blogspot은 주로 iframe 안의 body에 contenteditable 속성을 가집니다.
-      await page.evaluate((htmlContent) => {
-        const iframes = document.querySelectorAll('iframe');
-        for (let i = 0; i < iframes.length; i++) {
-          const doc = iframes[i].contentDocument;
-          if (doc && doc.body && doc.body.getAttribute('contenteditable') === 'true') {
-            doc.body.focus();
-            const dataTransfer = new DataTransfer();
-            dataTransfer.setData('text/html', htmlContent);
-            dataTransfer.setData('text/plain', htmlContent);
-            
-            const pasteEvent = new ClipboardEvent('paste', {
-              clipboardData: dataTransfer,
-              bubbles: true,
-              cancelable: true
-            });
-            doc.body.dispatchEvent(pasteEvent);
-            return; // 성공 시 종료
+      // 본문 영역 탐색 및 클릭 후 HTML 주입
+      let injected = false;
+
+      // 1. 프레임(iframe) 내부의 body[contenteditable="true"] 탐색 (Blogger 기본 방식)
+      const frames = page.frames();
+      for (const frame of frames) {
+        try {
+          const bodyLocator = frame.locator('body[contenteditable="true"], body.editable');
+          if (await bodyLocator.count() > 0) {
+            await bodyLocator.first().click();
+            await page.waitForTimeout(500);
+            await frame.evaluate((html) => {
+              document.execCommand('insertHTML', false, html);
+            }, content);
+            injected = true;
+            console.log('[BlogspotPublisher] 본문 iframe 영역에 HTML 삽입 완료.');
+            break;
           }
+        } catch (e) {
+          // Cross-origin 프레임 등 접근 불가 예외 무시
         }
-        
-        // iframe 방식이 아닐 경우 (div contenteditable)
-        const editorDiv = document.querySelector('div[contenteditable="true"]') as HTMLElement;
-        if (editorDiv) {
-          editorDiv.focus();
-          const dataTransfer = new DataTransfer();
-          dataTransfer.setData('text/html', htmlContent);
-          dataTransfer.setData('text/plain', htmlContent);
-          
-          const pasteEvent = new ClipboardEvent('paste', {
-            clipboardData: dataTransfer,
-            bubbles: true,
-            cancelable: true
-          });
-          editorDiv.dispatchEvent(pasteEvent);
+      }
+
+      // 2. 만약 iframe이 없다면 메인 페이지의 div[contenteditable="true"] 탐색
+      if (!injected) {
+        const divLocator = page.locator('div[contenteditable="true"], .ProseMirror');
+        if (await divLocator.count() > 0) {
+          await divLocator.first().click();
+          await page.waitForTimeout(500);
+          await page.evaluate((html) => {
+            document.execCommand('insertHTML', false, html);
+          }, content);
+          injected = true;
+          console.log('[BlogspotPublisher] 본문 div 영역에 HTML 삽입 완료.');
         }
-      }, content);
+      }
+
+      // 3. 둘 다 실패했을 경우, 무식하게 붙여넣기 (사용자 클릭 우회)
+      if (!injected) {
+        console.log('[BlogspotPublisher] 경고: 본문 영역을 명시적으로 찾지 못해 강제 붙여넣기를 시도합니다.');
+        clipboardy.writeSync(content);
+        await page.keyboard.press('Tab');
+        await page.waitForTimeout(500);
+        await page.keyboard.press(process.platform === 'darwin' ? 'Meta+V' : 'Control+V');
+      }
       await page.waitForTimeout(1000);
 
       // 발행 버튼 클릭 (aria-label="Publish" 또는 "게시")
