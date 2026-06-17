@@ -31,8 +31,8 @@ export class TistoryPublisher extends BasePublisher {
 
     try {
       // 티스토리 관리자 페이지 이동 (로그인 체크)
-      await page.goto(`https://${tistoryBlog}.tistory.com/manage/post`);
-      await page.waitForTimeout(Math.random() * 1000 + 1000);
+      await page.goto(`https://${tistoryBlog}.tistory.com/manage/post`, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(2000);
 
       if (page.url().includes('accounts.kakao.com/login')) {
         console.log('[TistoryPublisher] 카카오 로그인을 진행합니다...');
