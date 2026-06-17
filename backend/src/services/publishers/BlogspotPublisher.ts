@@ -201,7 +201,7 @@ export class BlogspotPublisher extends BasePublisher {
             const filePathsToUpload = [];
             for (const media of params.mediaPaths) {
               const filename = path.basename(media);
-              const localPath = path.join(__dirname, '../../../../uploads', filename);
+              const localPath = path.join(__dirname, '../../../uploads', filename);
               if (fs.existsSync(localPath)) {
                 filePathsToUpload.push(localPath);
               }
