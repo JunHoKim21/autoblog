@@ -183,33 +183,35 @@ export class BlogspotPublisher extends BasePublisher {
       if (params.mediaPaths && params.mediaPaths.length > 0) {
         console.log('[BlogspotPublisher] 로컬 이미지를 구글 피커(컴퓨터에서 업로드)를 통해 확실하게 업로드합니다.');
         try {
-          // 1. 툴바에서 이미지 삽입 버튼 클릭
-          const insertImageBtn = page.locator('div[aria-label="이미지 삽입"], div[aria-label="Insert image"], div[data-tooltip="이미지 삽입"], span:has-text("이미지 삽입")').filter({ visible: true }).first();
-          if (await insertImageBtn.isVisible()) {
-            await insertImageBtn.click();
-            await page.waitForTimeout(1000);
-            
-            // 2. 컴퓨터에서 업로드 클릭
-            const uploadFromComputerBtn = page.locator('text="컴퓨터에서 업로드"').or(page.locator('text="Upload from computer"')).filter({ visible: true }).first();
-            await uploadFromComputerBtn.click();
-            await page.waitForTimeout(3000); // iframe 로딩 대기
-            
-            // 3. Picker iframe 찾기
-            const pickerFrame = page.frameLocator('iframe.picker-frame, iframe.picker, iframe[src*="docs.google.com/picker"]');
-            
-            // 로컬 파일 절대 경로 배열 생성
-            const filePathsToUpload = [];
-            for (const media of params.mediaPaths) {
-              const filename = path.basename(media);
-              const localPath = path.join(__dirname, '../../../uploads', filename);
-              if (fs.existsSync(localPath)) {
-                filePathsToUpload.push(localPath);
-              }
+          // 로컬 파일 절대 경로 배열 생성 (버튼 클릭 전에 먼저 검증)
+          const filePathsToUpload = [];
+          for (const media of params.mediaPaths) {
+            const filename = path.basename(media);
+            const localPath = path.join(process.cwd(), 'uploads', filename);
+            if (fs.existsSync(localPath)) {
+              filePathsToUpload.push(localPath);
+            } else {
+              console.log(`[BlogspotPublisher] 파일이 존재하지 않아 업로드 목록에서 제외: ${localPath}`);
             }
-            
-            if (filePathsToUpload.length > 0) {
+          }
+
+          if (filePathsToUpload.length > 0) {
+            // 1. 툴바에서 이미지 삽입 버튼 클릭
+            const insertImageBtn = page.locator('div[aria-label="이미지 삽입"], div[aria-label="Insert image"], div[data-tooltip="이미지 삽입"], span:has-text("이미지 삽입")').filter({ visible: true }).first();
+            if (await insertImageBtn.isVisible()) {
+              await insertImageBtn.click();
+              await page.waitForTimeout(1000);
+              
+              // 2. 컴퓨터에서 업로드 클릭
+              const uploadFromComputerBtn = page.locator('text="컴퓨터에서 업로드"').or(page.locator('text="Upload from computer"')).filter({ visible: true }).first();
+              await uploadFromComputerBtn.click();
+              await page.waitForTimeout(3000); // iframe 로딩 대기
+              
+              // 3. Picker iframe 찾기
+              const pickerFrame = page.frameLocator('iframe.picker-frame, iframe.picker, iframe[src*="docs.google.com/picker"]');
+              
               // 4. 찾아보기 버튼 클릭을 통한 확실한 파일 선택 (OS 파일 선택창 후킹)
-              console.log('[BlogspotPublisher] 찾아보기 버튼 클릭 및 파일 선택 대기 중...');
+              console.log(`[BlogspotPublisher] 찾아보기 버튼 클릭 및 ${filePathsToUpload.length}개 파일 선택 대기 중...`);
               const browseBtn = pickerFrame.locator('button:has-text("찾아보기"), div[role="button"]:has-text("찾아보기"), span:has-text("찾아보기"), text="찾아보기", text="Browse"').filter({ visible: true }).first();
               
               const [fileChooser] = await Promise.all([
@@ -218,20 +220,21 @@ export class BlogspotPublisher extends BasePublisher {
               ]);
               
               await fileChooser.setFiles(filePathsToUpload);
-              console.log(`[BlogspotPublisher] ${filePathsToUpload.length}개 파일 선택 완료, 구글 서버 업로드 진행 중...`);
+              console.log(`[BlogspotPublisher] 파일 선택 완료, 구글 서버 업로드 진행 중...`);
               
               // 5. 업로드 완료 대기 (사진 용량에 따라 넉넉히 대기)
               await page.waitForTimeout(10000); 
               
               // 6. 선택 버튼 클릭 (선택, Select 등)
-              // 보통 좌측 하단에 파란색 버튼으로 존재합니다.
               const selectBtn = pickerFrame.locator('div[role="button"]:has-text("선택"), div[role="button"]:has-text("Select")').filter({ visible: true }).last();
               await selectBtn.click();
               console.log('[BlogspotPublisher] 구글 피커를 통한 이미지 본문 삽입 완료.');
               await page.waitForTimeout(3000); // 본문에 렌더링될 시간 대기
+            } else {
+              console.log('[BlogspotPublisher] 이미지 삽입 툴바 버튼을 찾을 수 없습니다.');
             }
           } else {
-            console.log('[BlogspotPublisher] 이미지 삽입 툴바 버튼을 찾을 수 없습니다.');
+            console.log('[BlogspotPublisher] 업로드할 유효한 이미지 파일이 없습니다.');
           }
         } catch (e) {
           console.error('[BlogspotPublisher] 구글 피커 이미지 업로드 중 에러 발생:', e);
