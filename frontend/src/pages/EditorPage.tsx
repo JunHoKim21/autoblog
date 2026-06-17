@@ -88,9 +88,14 @@ const EditorPage = () => {
     }
   }, [id, editor, navigate]);
 
-  const handlePublish = async () => {
+  const handlePublish = async (isImmediate: boolean) => {
     if (!title || !editor?.getHTML()) {
       alert('제목과 내용을 모두 입력해주세요.');
+      return;
+    }
+    
+    if (!isImmediate && !scheduledAt) {
+      alert('발행 예약 시간을 설정해주세요. 즉시 발행을 원하시면 [즉시 발송하기] 버튼을 눌러주세요.');
       return;
     }
     
@@ -99,17 +104,17 @@ const EditorPage = () => {
         title,
         content: editor.getHTML(),
         mediaPaths,
-        scheduledAt: scheduledAt || null,
+        scheduledAt: isImmediate ? null : scheduledAt,
         platforms: ['NAVER', 'TISTORY', 'BLOGSPOT']
       };
 
       if (id) {
         await axios.put(`/api/posts/${id}`, payload);
-        alert('글 수정이 완료되었습니다!');
+        alert(isImmediate ? '즉시 발송이 요청되었습니다!' : '글 수정 및 예약이 완료되었습니다!');
         navigate('/dashboard');
       } else {
         await axios.post('/api/posts', payload);
-        alert('발행이 예약되었습니다!');
+        alert(isImmediate ? '즉시 발송이 요청되었습니다!' : '발행이 예약되었습니다!');
         setTitle('');
         editor.commands.setContent('');
         setMediaPaths([]);
@@ -135,19 +140,27 @@ const EditorPage = () => {
           <EditorContent editor={editor} />
         </div>
 
-        <div className="mt-6 flex justify-end items-center space-x-4">
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-            className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
-          />
+        <div className="mt-6 flex justify-between items-center">
           <button 
-            onClick={handlePublish}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
+            onClick={() => handlePublish(true)}
+            className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
           >
-            {id ? '수정 완료하기' : '발행 예약하기'}
+            즉시 발송하기
           </button>
+          <div className="flex items-center space-x-4">
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            />
+            <button 
+              onClick={() => handlePublish(false)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
+            >
+              {id ? '예약 수정하기' : '발행 예약하기'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
