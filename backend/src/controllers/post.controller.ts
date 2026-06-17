@@ -90,3 +90,16 @@ export const updatePost = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+export const deletePost = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.post.delete({
+      where: { id: Number(id) }
+    });
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete Post Error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

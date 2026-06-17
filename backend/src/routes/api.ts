@@ -52,6 +52,7 @@ router.get('/posts', async (req, res) => {
 });
 router.get('/posts/:id', postController.getPostById);
 router.put('/posts/:id', postController.updatePost);
+router.delete('/posts/:id', postController.deletePost);
 
 // 설정 API
 router.get('/config', async (req, res) => {

@@ -64,11 +64,28 @@ const DashboardPage = () => {
                 <h3 className="text-lg font-semibold break-keep">
                   {post.title}
                 </h3>
-                {post.status === 'SCHEDULED' && (
-                  <Link to={`/editor/${post.id}`} className="shrink-0 text-xs font-normal text-blue-600 border border-blue-600 px-3 py-1 rounded hover:bg-blue-50 transition-colors mt-1">
-                    수정
-                  </Link>
-                )}
+                <div className="flex gap-2 shrink-0">
+                  {post.status === 'SCHEDULED' && (
+                    <Link to={`/editor/${post.id}`} className="text-xs font-normal text-blue-600 border border-blue-600 px-3 py-1 rounded hover:bg-blue-50 transition-colors mt-1">
+                      수정
+                    </Link>
+                  )}
+                  <button
+                    onClick={async () => {
+                      if (window.confirm('정말로 이 글을 삭제하시겠습니까?')) {
+                        try {
+                          await axios.delete(`/api/posts/${post.id}`);
+                          fetchPosts();
+                        } catch (e) {
+                          alert('삭제에 실패했습니다.');
+                        }
+                      }
+                    }}
+                    className="text-xs font-normal text-red-600 border border-red-600 px-3 py-1 rounded hover:bg-red-50 transition-colors mt-1"
+                  >
+                    삭제
+                  </button>
+                </div>
               </div>
               <div className="text-sm text-gray-500">
                 작성일: {new Date(post.createdAt).toLocaleString()} <br />
