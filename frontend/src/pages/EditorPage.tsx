@@ -8,6 +8,7 @@ import { Plugin, PluginKey } from 'prosemirror-state';
 const EditorPage = () => {
   const [title, setTitle] = useState('');
   const [mediaPaths, setMediaPaths] = useState<string[]>([]);
+  const [scheduledAt, setScheduledAt] = useState('');
 
   const editor = useEditor({
     extensions: [
@@ -73,12 +74,14 @@ const EditorPage = () => {
         title,
         content: editor.getHTML(),
         mediaPaths,
+        scheduledAt: scheduledAt || null,
         platforms: ['NAVER', 'TISTORY', 'BLOGSPOT']
       });
       alert('발행이 예약되었습니다!');
       setTitle('');
       editor.commands.setContent('');
       setMediaPaths([]);
+      setScheduledAt('');
     } catch (err) {
       alert('발행 요청 중 오류가 발생했습니다.');
     }
@@ -98,7 +101,13 @@ const EditorPage = () => {
           <EditorContent editor={editor} />
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end items-center space-x-4">
+          <input
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+            className="border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+          />
           <button 
             onClick={handlePublish}
             className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md transition-colors"
