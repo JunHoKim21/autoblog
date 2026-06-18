@@ -66,7 +66,7 @@ const EditorPage = () => {
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose max-w-none focus:outline-none min-h-[400px]',
+        class: 'prose max-w-none focus:outline-none min-h-[400px] whitespace-pre-wrap',
       },
     },
   });

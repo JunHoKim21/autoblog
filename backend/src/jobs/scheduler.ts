@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { NaverPublisher } from '../services/publishers/NaverPublisher';
 import { TistoryPublisher } from '../services/publishers/TistoryPublisher';
 import { BlogspotPublisher } from '../services/publishers/BlogspotPublisher';
-
+import { sendTelegramMessage } from '../utils/telegram';
 export let isPublishing = false;
 
 export const runSchedulerSafe = async (prisma: PrismaClient) => {
@@ -90,11 +90,13 @@ export const processScheduledPosts = async (prisma: PrismaClient) => {
           where: { id: plat.id },
           data: { status: 'SUCCESS', externalUrl: result.externalUrl }
         });
+        sendTelegramMessage(`✅ [${plat.platform}] '${plat.post.title}' 발행 성공!\nURL: ${result.externalUrl}`);
       } else {
         await prisma.platformStatus.update({
           where: { id: plat.id },
           data: { status: 'FAILED', errorMsg: result.error || 'Unknown Error' }
         });
+        sendTelegramMessage(`❌ [${plat.platform}] '${plat.post.title}' 발행 실패\n사유: ${result.error}`);
       }
     } catch (err: any) {
       console.error(`[Scheduler] Unexpected error publishing to ${plat.platform}:`, err);
@@ -102,6 +104,7 @@ export const processScheduledPosts = async (prisma: PrismaClient) => {
         where: { id: plat.id },
         data: { status: 'FAILED', errorMsg: `Exception: ${err.message}` }
       });
+      sendTelegramMessage(`❌ [${plat.platform}] '${plat.post.title}' 발행 중 예외 에러 발생\n사유: ${err.message}`);
     }
   }
 };
