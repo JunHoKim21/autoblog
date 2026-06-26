@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+settings.json
+images/
+prompt_b64.txt
+encode.py
+
+token.json
+client_secret*.json
+etc/

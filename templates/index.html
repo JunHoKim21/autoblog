@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 자동 블로그 포스팅 봇</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 커스텀 로딩 스피너 애니메이션 */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #ffffff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Glassmorphism 효과 */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-100 via-purple-50 to-blue-100 min-h-screen text-gray-800 font-sans">
+    
+    <div class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8 relative">
+        
+        <!-- 헤더 영역 -->
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-2">
+                    AI 블로그 포스팅 봇
+                </h1>
+                <p class="text-lg text-gray-500">초안만 입력하면 AI가 마법처럼 완벽한 포스트로 변환해 줍니다 ✨</p>
+            </div>
+            <button type="button" onclick="openSettingsModal()" class="flex items-center space-x-2 bg-white text-gray-700 px-4 py-2 rounded-lg shadow hover:bg-gray-50 border border-gray-200 transition-colors">
+                <span class="text-xl">⚙️</span>
+                <span class="font-semibold">환경 설정</span>
+            </button>
+        </div>
+
+        <!-- 안내 문구 (Notice) -->
+        <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded-r-lg shadow-sm">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <span class="text-blue-500 text-xl">ℹ️</span>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-bold text-blue-800">이용 전 필독 안내 (API 사용량 제한)</h3>
+                    <div class="mt-2 text-sm text-blue-700 space-y-1">
+                        <p>• 이 프로그램은 <strong>구글 제미나이(Gemini) 무료 인공지능</strong>을 기반으로 작동합니다.</p>
+                        <p>• 구글 정책상 무료 버전은 <strong>1분에 약 15회, 하루 최대 1,500회</strong>의 사용량 제한이 있습니다.</p>
+                        <p>• 짧은 시간에 연속으로 너무 많은 글을 발행하면 <strong>"사용량 초과 에러"</strong>가 발생하며 일시적으로 글쓰기가 차단될 수 있습니다.</p>
+                        <p>• 에러 발생 시, 당황하지 마시고 <strong>1~2분 정도 대기</strong> 후 다시 시도해 주세요.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 폼 카드 -->
+        <div class="glass rounded-2xl shadow-xl p-8">
+            <form id="automationForm">
+                
+                <!-- 초안 입력란 -->
+                <div class="mb-6">
+                    <label for="draft" class="block text-sm font-semibold text-gray-700 mb-2">
+                        블로그 초안 (Draft)
+                    </label>
+                    <textarea id="draft" name="draft" rows="12" required
+                        class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none bg-gray-50 text-gray-800"
+                        placeholder="이곳에 다듬어지지 않은 글의 초안을 길게 붙여넣으세요. AI가 멋지게 다듬어 줍니다!"></textarea>
+                </div>
+
+                <!-- 예약 시간 설정란 -->
+                <div class="mb-8 bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+                    <label for="scheduled_time" class="block text-sm font-semibold text-indigo-900 mb-2 flex items-center">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        예약 발행 시간 (선택)
+                    </label>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                        <input type="datetime-local" id="scheduled_time" name="scheduled_time"
+                            class="p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 flex-1 bg-white">
+                        <span class="text-xs text-indigo-600">* 지정하지 않으면 자동으로 '내일 오전 9시'에 발행됩니다.</span>
+                    </div>
+                </div>
+
+                <!-- 실행 버튼 -->
+                <button type="submit" id="submitBtn"
+                    class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-0.5 flex justify-center items-center">
+                    🚀 파이프라인 실행 시작!
+                </button>
+            </form>
+        </div>
+        
+    </div>
+
+    <!-- 전체 화면 로딩 오버레이 (초기엔 숨김) -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-900 bg-opacity-70 z-50 hidden flex-col justify-center items-center">
+        <div class="spinner mb-4"></div>
+        <h2 class="text-white text-2xl font-bold mb-2">AI가 열일 중입니다...</h2>
+        <p class="text-indigo-200 text-center max-w-md px-4">
+            초안 분석 ➡️ HTML 변환 ➡️ 무료 이미지 2장 생성 ➡️ 블로그 자동 업로드<br>
+            이 과정은 보통 1~2분 정도 소요됩니다. 창을 닫지 마세요!
+        </p>
+    </div>
+    
+    <!-- 결과 알림 모달 (초기엔 숨김) -->
+    <div id="resultModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 hidden flex justify-center items-center px-4">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full text-center transform scale-95 transition-all">
+            <div id="modalIcon" class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                <!-- 성공 아이콘 (기본) -->
+                <svg class="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            
+            <h3 id="modalTitle" class="text-2xl font-bold text-gray-900 mb-2">성공!</h3>
+            <p id="modalMessage" class="text-gray-600 mb-6">성공적으로 포스팅되었습니다.</p>
+            
+            <div id="linkContainer" class="mb-6 hidden">
+                <a id="postLink" href="#" target="_blank" class="inline-block px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold rounded-lg hover:bg-indigo-100 transition-colors w-full break-all text-sm">포스트 확인하기</a>
+            </div>
+            
+            <button onclick="closeModal()" class="w-full bg-gray-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors">
+                닫기
+            </button>
+        </div>
+    </div>
+
+    <!-- 설정 모달 -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center backdrop-blur-sm px-4">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 md:p-8 text-center max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <h3 class="text-2xl font-bold text-gray-900 mb-6 text-left">⚙️ 환경 설정</h3>
+            
+            <!-- 탭 헤더 -->
+            <div class="flex space-x-4 border-b border-gray-200 mb-6">
+                <button id="tabApiBtn" class="pb-2 text-lg font-semibold text-indigo-600 border-b-2 border-indigo-600 focus:outline-none" onclick="switchTab('api')">API 및 연동 설정</button>
+                <button id="tabPromptBtn" class="pb-2 text-lg font-semibold text-gray-500 hover:text-indigo-500 focus:outline-none" onclick="switchTab('prompt')">프롬프트 설정</button>
+            </div>
+
+            <!-- API 탭 -->
+            <div id="tabApi" class="text-left space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Gemini API Key</label>
+                    <input type="password" id="setGeminiKey" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500" placeholder="AI 글쓰기용 API 키">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Hugging Face API Key</label>
+                    <input type="password" id="setHfKey" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500" placeholder="AI 이미지용 API 키">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Blogger ID</label>
+                    <input type="text" id="setBlogId" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500" placeholder="구글 블로그 ID">
+                </div>
+                <div class="flex space-x-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Telegram Bot Token</label>
+                        <input type="password" id="setTeleToken" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500" placeholder="텔레그램 봇 토큰">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-700 mb-1">Telegram Chat ID</label>
+                        <input type="text" id="setTeleChat" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500" placeholder="메시지를 받을 채팅 ID">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 프롬프트 탭 -->
+            <div id="tabPrompt" class="text-left hidden">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="block text-sm font-semibold text-gray-700">추가 프롬프트 (옵션)</label>
+                    <button type="button" onclick="resetPrompt()" class="text-sm text-red-600 hover:text-red-800 font-semibold underline">기본값으로 초기화(비우기)</button>
+                </div>
+                <textarea id="setPrompt" rows="15" class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-indigo-500 text-sm font-mono" placeholder="예: 무조건 반말로 작성해줘. / ~요체로 친근하게 써줘. 등 추가 지시사항을 입력하세요."></textarea>
+                <p class="text-xs text-gray-500 mt-2">* 주의: 빈칸으로 두면 판매자가 숨겨둔 '최적화 기본 프롬프트'가 자동으로 적용됩니다. 나만의 특별한 지시사항이 있다면 추가해 보세요.</p>
+            </div>
+            
+            <div class="mt-8 flex justify-end space-x-3">
+                <button onclick="closeSettingsModal()" class="px-5 py-2 bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300 transition-colors">취소</button>
+                <button onclick="saveSettings()" class="px-5 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition-colors">저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('automationForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const resultModal = document.getElementById('resultModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalIcon = document.getElementById('modalIcon');
+        const linkContainer = document.getElementById('linkContainer');
+        const postLink = document.getElementById('postLink');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const draft = document.getElementById('draft').value;
+            const scheduled_time = document.getElementById('scheduled_time').value;
+            
+            if (!draft.trim()) {
+                alert("초안을 입력해주세요!");
+                return;
+            }
+
+            // 로딩 표시
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+            
+            try {
+                const response = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ draft, scheduled_time })
+                });
+                
+                const data = await response.json();
+                
+                // 로딩 숨김
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+                
+                if (data.success) {
+                    showModal(true, "백그라운드 예약 완료! 🚀", data.message);
+                    form.reset(); // 성공 시 폼 초기화
+                } else {
+                    showModal(false, "오류 발생 😢", data.error);
+                }
+                
+            } catch (error) {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+                showModal(false, "네트워크 오류", "서버와 통신하는 중 문제가 발생했습니다.");
+                console.error(error);
+            }
+        });
+
+        function showModal(isSuccess, title, message, url = null) {
+            modalTitle.innerText = title;
+            modalMessage.innerText = message;
+            
+            if (isSuccess) {
+                modalIcon.classList.replace('bg-red-100', 'bg-green-100');
+                modalIcon.innerHTML = `<svg class="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+                
+                if (url) {
+                    linkContainer.classList.remove('hidden');
+                    postLink.href = url;
+                } else {
+                    linkContainer.classList.add('hidden');
+                }
+            } else {
+                modalIcon.classList.replace('bg-green-100', 'bg-red-100');
+                modalIcon.innerHTML = `<svg class="h-10 w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+                linkContainer.classList.add('hidden');
+            }
+            
+            resultModal.classList.remove('hidden');
+            resultModal.classList.add('flex');
+        }
+
+        function closeModal() {
+            resultModal.classList.add('hidden');
+            resultModal.classList.remove('flex');
+        }
+        // --- 설정 관련 로직 ---
+        const settingsModal = document.getElementById('settingsModal');
+        const tabApi = document.getElementById('tabApi');
+        const tabPrompt = document.getElementById('tabPrompt');
+        const tabApiBtn = document.getElementById('tabApiBtn');
+        const tabPromptBtn = document.getElementById('tabPromptBtn');
+
+        function switchTab(tab) {
+            if (tab === 'api') {
+                tabApi.classList.remove('hidden');
+                tabPrompt.classList.add('hidden');
+                tabApiBtn.classList.replace('text-gray-500', 'text-indigo-600');
+                tabApiBtn.classList.replace('hover:text-indigo-500', 'border-indigo-600');
+                tabApiBtn.classList.add('border-b-2');
+                tabPromptBtn.classList.replace('text-indigo-600', 'text-gray-500');
+                tabPromptBtn.classList.remove('border-b-2', 'border-indigo-600');
+                tabPromptBtn.classList.add('hover:text-indigo-500');
+            } else {
+                tabPrompt.classList.remove('hidden');
+                tabApi.classList.add('hidden');
+                tabPromptBtn.classList.replace('text-gray-500', 'text-indigo-600');
+                tabPromptBtn.classList.replace('hover:text-indigo-500', 'border-indigo-600');
+                tabPromptBtn.classList.add('border-b-2');
+                tabApiBtn.classList.replace('text-indigo-600', 'text-gray-500');
+                tabApiBtn.classList.remove('border-b-2', 'border-indigo-600');
+                tabApiBtn.classList.add('hover:text-indigo-500');
+            }
+        }
+
+        async function openSettingsModal() {
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+                
+                document.getElementById('setGeminiKey').value = data.gemini_api_key || '';
+                document.getElementById('setHfKey').value = data.hf_api_key || '';
+                document.getElementById('setBlogId').value = data.blog_id || '';
+                document.getElementById('setTeleToken').value = data.telegram_bot_token || '';
+                document.getElementById('setTeleChat').value = data.telegram_chat_id || '';
+                document.getElementById('setPrompt').value = data.system_prompt || '';
+                
+                settingsModal.classList.remove('hidden');
+                settingsModal.classList.add('flex');
+            } catch (e) {
+                alert("설정을 불러오는 데 실패했습니다.");
+            }
+        }
+
+        function closeSettingsModal() {
+            settingsModal.classList.add('hidden');
+            settingsModal.classList.remove('flex');
+        }
+
+        async function saveSettings() {
+            const newSettings = {
+                gemini_api_key: document.getElementById('setGeminiKey').value,
+                hf_api_key: document.getElementById('setHfKey').value,
+                blog_id: document.getElementById('setBlogId').value,
+                telegram_bot_token: document.getElementById('setTeleToken').value,
+                telegram_chat_id: document.getElementById('setTeleChat').value,
+                system_prompt: document.getElementById('setPrompt').value
+            };
+            
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newSettings)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    alert("✅ 설정이 성공적으로 저장되었습니다!");
+                    closeSettingsModal();
+                }
+            } catch (e) {
+                alert("설정 저장에 실패했습니다.");
+            }
+        }
+
+        async function resetPrompt() {
+            if (!confirm("프롬프트를 시스템 기본값으로 초기화하시겠습니까?\n현재 수정하신 내용은 모두 삭제됩니다.")) return;
+            
+            try {
+                const response = await fetch('/api/settings/reset_prompt', { method: 'POST' });
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('setPrompt').value = result.prompt;
+                    alert("프롬프트가 초기화되었습니다. [저장하기]를 눌러야 최종 반영됩니다.");
+                }
+            } catch (e) {
+                alert("초기화 실패");
+            }
+        }
+    </script>
+</body>
+</html>
